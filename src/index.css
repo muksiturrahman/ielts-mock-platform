@@ -93,6 +93,8 @@ body {
 .dark .text-slate-900 { color: #f8fafc }
 .dark .text-slate-800 { color: #e2e8f0 }
 .dark .bg-white, .dark .card { background-color: #111827 }
+.dark body { color: #e2e8f0 }
+.dark .input { background-color: #0b1120; color: #e2e8f0 }
 .dark .bg-white\/95 { background-color: rgb(17 24 39 / 0.95) }
 .dark .bg-white\/80 { background-color: rgb(17 24 39 / 0.8) }
 .dark .bg-white\/60 { background-color: rgb(17 24 39 / 0.6) }

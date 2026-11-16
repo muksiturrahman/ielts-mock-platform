@@ -62,7 +62,7 @@ export async function listModels(provider: AIProvider, key: string): Promise<str
     return ids
   }
   const info = PROVIDERS[provider]
-  const res = await fetch(`${info.baseUrl}/models`, { headers: { Authorization: `Bearer ${key}` } })
+  const res = await fetch(`${info.baseUrl}/models`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) })
   // Gemini answers a bad key with 400 "API key not valid" rather than 401.
   if (!res.ok) throw new AIError(res.status === 401 || res.status === 403 || /api.key/i.test(await res.text()) ? 'The API key was rejected.' : `Could not load models (${res.status}).`)
   const data = await res.json()
@@ -148,17 +148,21 @@ async function callOpenAICompatible<T>(provider: AIProvider, key: string, model:
   for (;;) {
     tried.push(current)
     try {
-      return await callModel<T>(provider, key, current, system, user, schema, maxTokens)
+      const out = await callModel<T>(provider, key, current, system, user, schema, maxTokens)
+      // Remember the model that answered so the next call goes straight to it.
+      if (current !== model) setSettings({ models: { ...getDB().settings.models, [provider]: current } })
+      return out
     } catch (e) {
       if (!(e instanceof BusyError)) throw e
       const ids = await listModels(provider, key).catch(() => [] as string[])
       const next = fallbackModels(provider, ids).find(id => !tried.includes(id))
-      if (!next || tried.length >= 3) throw new AIError(`${PROVIDERS[provider].label} is overloaded right now (tried ${tried.join(', ')}). Try again in a minute, or switch provider in Settings.`)
+      if (!next || tried.length >= 4) throw new AIError(`${PROVIDERS[provider].label} isn't answering right now (tried ${tried.join(', ')}). Try again in a minute, or switch provider in Settings.`)
       current = next
     }
   }
 }
 
+/** The model is overloaded, timed out, or not available to this key: worth trying another model. */
 class BusyError extends Error {}
 
 /** Other models worth trying when the chosen one is overloaded: Flash first, then Flash-Lite, newest first. */
@@ -189,6 +193,8 @@ async function callModel<T>(provider: AIProvider, key: string, model: string, sy
         ...(provider === 'openrouter' ? { 'HTTP-Referer': location.origin, 'X-Title': 'BandReady IELTS' } : {}),
       },
       body: JSON.stringify(body(jsonMode)),
+      // Short for the connection test, long enough for a full essay evaluation.
+      signal: AbortSignal.timeout(maxTokens <= 1000 ? 15000 : 120000),
     })
 
   let res: Response
@@ -205,6 +211,7 @@ async function callModel<T>(provider: AIProvider, key: string, model: string, sy
       res = await send(true)
     }
   } catch (e) {
+    if ((e as Error).name === 'TimeoutError') throw new BusyError(`${model} timed out`)
     throw new AIError(`Could not reach ${info.label}: ${(e as Error).message}`)
   }
   if (!res.ok) {
@@ -213,7 +220,10 @@ async function callModel<T>(provider: AIProvider, key: string, model: string, sy
     if (res.status === 401 || res.status === 403 || /api.key (not valid|invalid)|invalid api.key/i.test(msg)) throw new AIError(`Your ${info.label} API key was rejected. Check it in Settings.`)
     if (BUSY.has(res.status) || /high demand|overloaded/i.test(msg)) throw new BusyError(msg)
     if (res.status === 429) throw new AIError(`${info.label} rate limit or free daily quota reached. Wait, or switch provider in Settings.`)
-    if (res.status === 404) throw new AIError(`Model “${model}” isn't available on ${info.label}. Pick another in Settings.`)
+    if (res.status === 404) {
+      if (provider === 'gemini') throw new BusyError(msg)
+      throw new AIError(`Model “${model}” isn't available on ${info.label}. Pick another in Settings.`)
+    }
     throw new AIError(`AI marking failed (${res.status}): ${msg}`)
   }
   const data = await res.json()
@@ -230,7 +240,9 @@ export async function testConnection(): Promise<string> {
   const r = await callStructured<{ ok: string }>('You check connectivity.', 'Reply with ok = "ready".', {
     type: 'object', properties: { ok: { type: 'string' } }, required: ['ok'], additionalProperties: false,
   }, 1000)
-  return r.ok
+  if (!r.ok) throw new AIError('Unexpected reply from the AI.')
+  const s = getDB().settings
+  return s.models[s.provider] || PROVIDERS[s.provider].defaultModel
 }
 
 // ---------- schemas (Claude structured outputs: every object closed, every property required) ----------

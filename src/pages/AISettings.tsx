@@ -89,7 +89,7 @@ export function AISection() {
       <div>
         <Button variant="dark" disabled={!key || testing} onClick={async () => {
           setTesting(true)
-          try { await testConnection(); toast(`Connected to ${info.label} — AI marking is ready`, 'success') } catch (e) { toast((e as Error).message, 'error') } finally { setTesting(false) }
+          try { const m = await testConnection(); toast(`Connected to ${info.label} (${m}) — AI marking is ready`, 'success') } catch (e) { toast((e as Error).message, 'error') } finally { setTesting(false) }
         }}>
           {testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test connection
         </Button>
