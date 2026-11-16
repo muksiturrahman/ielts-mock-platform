@@ -1,0 +1,78 @@
+import { describe, expect, it } from 'vitest'
+import { criteriaBand, expandAccepted, isCompletionCorrect, normalizeAnswer, overallBand, rawToBand, roundBand, scoreObjective, writingBand } from './scoring'
+import type { QuestionGroup } from './types'
+
+describe('band conversion', () => {
+  it('listening', () => {
+    expect(rawToBand(40, 'listening', 'academic')).toBe(9)
+    expect(rawToBand(30, 'listening', 'academic')).toBe(7)
+    expect(rawToBand(23, 'listening', 'general')).toBe(6)
+    expect(rawToBand(0, 'listening', 'academic')).toBe(0)
+  })
+  it('academic vs general reading differ', () => {
+    expect(rawToBand(30, 'reading', 'academic')).toBe(7)
+    expect(rawToBand(30, 'reading', 'general')).toBe(6)
+    expect(rawToBand(34, 'reading', 'general')).toBe(7)
+  })
+  it('scales partial practice sets', () => {
+    expect(rawToBand(13, 'reading', 'academic', 13)).toBe(9)
+  })
+})
+
+describe('overall rounding', () => {
+  it('follows official rules', () => {
+    expect(roundBand(6.125)).toBe(6)
+    expect(roundBand(6.25)).toBe(6.5)
+    expect(roundBand(6.625)).toBe(6.5)
+    expect(roundBand(6.75)).toBe(7)
+    expect(overallBand([6.5, 6.5, 5, 7])).toBe(6.5) // 6.25 → 6.5
+    expect(overallBand([4, 3.5, 4, 4])).toBe(4) // 3.875 → 4
+    expect(overallBand([6, 6, 6, undefined])).toBeUndefined()
+  })
+  it('criteria and writing weighting', () => {
+    expect(criteriaBand([6, 7, 6, 6])).toBe(6) // 6.25 → down to 6
+    expect(criteriaBand([6, 7, 7, 6])).toBe(6.5)
+    expect(writingBand(6, 7)).toBe(6.5) // 6.67
+    expect(writingBand(undefined, 7)).toBe(7)
+  })
+})
+
+describe('answer matching', () => {
+  it('normalises case, punctuation, spelling, numbers and times', () => {
+    expect(normalizeAnswer('Colour')).toBe(normalizeAnswer('color'))
+    expect(normalizeAnswer('10 am')).toBe(normalizeAnswer('10:00am'))
+    expect(normalizeAnswer('21st March')).toBe(normalizeAnswer('March 21'))
+    expect(normalizeAnswer('organise')).toBe(normalizeAnswer('organize'))
+    expect(normalizeAnswer('three')).toBe('3')
+    expect(normalizeAnswer('£1,250')).toBe('1250')
+  })
+  it('expands optional words and alternatives', () => {
+    expect(expandAccepted('(the) library')).toEqual(['the library', 'library'])
+    expect(expandAccepted('colour/color')).toEqual(['color'])
+  })
+  it('applies word limits', () => {
+    const g = { maxWords: 2, allowNumber: true }
+    expect(isCompletionCorrect('the old library', ['(the) old library'], g)).toBe(false)
+    expect(isCompletionCorrect('old library', ['(the) old library'], g)).toBe(true)
+    expect(isCompletionCorrect('', ['x'], g)).toBe(false)
+  })
+})
+
+describe('section scoring', () => {
+  const groups: QuestionGroup[] = [
+    { id: 'g1', type: 'completion', instructions: '', maxWords: 2, questions: [{ id: 'q1', number: 1, prompt: '', answer: ['(the) museum'] }] },
+    { id: 'g2', type: 'tfng', instructions: '', questions: [{ id: 'q2', number: 2, prompt: '', answer: ['NOT GIVEN'] }] },
+    {
+      id: 'g3', type: 'mcq_multi', instructions: '', options: [], questions: [
+        { id: 'q3', number: 3, prompt: '', answer: ['B'] },
+        { id: 'q4', number: 4, prompt: '', answer: ['D'] },
+      ],
+    },
+  ]
+  it('scores each type and mcq_multi order-independently', () => {
+    const r = scoreObjective([{ groups }], { q1: 'Museum', q2: 'not given', g3: ['D', 'A'] }, 'listening', 'academic')
+    expect(r.raw).toBe(3)
+    expect(r.total).toBe(4)
+    expect(r.items.map(i => i.isCorrect)).toEqual([true, true, true, false])
+  })
+})
