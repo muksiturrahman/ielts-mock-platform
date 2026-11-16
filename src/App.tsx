@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { ToastProvider, cx } from './components/ui'
 import { useDB } from './lib/store'
+import { PROVIDERS } from './lib/ai'
 import Dashboard from './pages/Dashboard'
 import Tests from './pages/Tests'
 import HistoryPage from './pages/History'
@@ -38,7 +39,8 @@ function Logo() {
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const hasKey = useDB(d => Boolean(d.settings.apiKey))
+  const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
+  const provider = useDB(d => PROVIDERS[d.settings.provider].label)
   return (
     <div className="flex h-full flex-col gap-6 p-5">
       <Logo />
@@ -62,7 +64,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <Sparkles size={16} /> {hasKey ? 'AI marking active' : 'Enable AI marking'}
           </div>
           <p className={cx('mt-1 text-xs', hasKey ? 'text-emerald-700' : 'text-white/80')}>
-            {hasKey ? 'Writing & Speaking are marked by Claude.' : 'Add your Claude API key to get band scores for Writing & Speaking.'}
+            {hasKey ? `Writing & Speaking are marked by ${provider}.` : 'Add a free Gemini or Groq key to get band scores for Writing & Speaking.'}
           </p>
         </NavLink>
       </div>

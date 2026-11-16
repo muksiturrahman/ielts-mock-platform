@@ -1,4 +1,4 @@
-import { evaluateSpeaking, evaluateWriting } from './claude'
+import { evaluateSpeaking, evaluateWriting } from './ai'
 import { computeMetrics } from './speech'
 import { criteriaBand, overallBand, scoreObjective, writingBand } from './scoring'
 import { getDB, patchAttempt, saveAttempt, uid } from './store'

@@ -15,8 +15,9 @@ const KEY = 'ielts-mock.db'
 const VERSION = 1
 
 export const DEFAULT_SETTINGS: Settings = {
-  apiKey: '',
-  model: 'claude-sonnet-5-5',
+  provider: 'gemini',
+  keys: {},
+  models: {},
   examinerName: 'Examiner',
   writingPrompt: DEFAULT_WRITING_PROMPT,
   speakingPrompt: DEFAULT_SPEAKING_PROMPT,
@@ -29,12 +30,24 @@ const DEFAULT_PROFILE: Profile = {
   name: '', candidateId: '', dob: '', nationality: '', firstLanguage: '', targetBand: 7,
 }
 
+/** v1 stored a single Claude key as settings.apiKey/model — move it into the per-provider maps. */
+function migrateSettings(raw: Partial<Settings> & { apiKey?: string; model?: string }): Settings {
+  const { apiKey, model, ...rest } = raw ?? {}
+  const s: Settings = { ...DEFAULT_SETTINGS, ...rest, keys: { ...rest.keys }, models: { ...rest.models } }
+  if (apiKey && !s.keys.anthropic) {
+    s.keys.anthropic = apiKey
+    s.provider = 'anthropic'
+  }
+  if (model?.startsWith('claude') && !s.models.anthropic) s.models.anthropic = model
+  return s
+}
+
 function load(): DB {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const db = JSON.parse(raw) as DB
-      return { ...db, settings: { ...DEFAULT_SETTINGS, ...db.settings }, profile: { ...DEFAULT_PROFILE, ...db.profile } }
+      return { ...db, settings: migrateSettings(db.settings), profile: { ...DEFAULT_PROFILE, ...db.profile } }
     }
   } catch {
     /* corrupted or blocked storage → start fresh */
@@ -132,7 +145,7 @@ export function exportBackup(): string {
 export function importBackup(json: string) {
   const parsed = JSON.parse(json) as DB
   if (!Array.isArray(parsed.tests) || !Array.isArray(parsed.attempts)) throw new Error('Not a valid backup file')
-  update(() => ({ ...parsed, settings: { ...DEFAULT_SETTINGS, ...parsed.settings }, profile: { ...DEFAULT_PROFILE, ...parsed.profile } }))
+  update(() => ({ ...parsed, settings: migrateSettings(parsed.settings), profile: { ...DEFAULT_PROFILE, ...parsed.profile } }))
 }
 
 export function resetAll() {

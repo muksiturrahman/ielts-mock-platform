@@ -128,8 +128,8 @@ function Overview({ attempt, bands, onOpen }: { attempt: Attempt; bands: Partial
 }
 
 function MarkingState({ status, error, retry, children }: { status?: string; error?: string; retry: () => void; children: ReactNode }) {
-  const hasKey = useDB(d => Boolean(d.settings.apiKey))
-  if (status === 'marking') return <div className="space-y-2"><div className="skeleton h-4 w-3/4" /><div className="skeleton h-4 w-1/2" /><p className="flex items-center gap-1.5 text-sm text-brand-600"><Sparkles size={14} /> Claude is marking against the band descriptors…</p></div>
+  const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
+  if (status === 'marking') return <div className="space-y-2"><div className="skeleton h-4 w-3/4" /><div className="skeleton h-4 w-1/2" /><p className="flex items-center gap-1.5 text-sm text-brand-600"><Sparkles size={14} /> The AI examiner is marking against the band descriptors…</p></div>
   if (status === 'error' || status === 'pending') {
     return (
       <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">

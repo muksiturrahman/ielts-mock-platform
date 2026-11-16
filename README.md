@@ -1,8 +1,9 @@
 # BandReady — IELTS Mock Test Platform
 
 Realistic **computer-delivered IELTS** mock tests (Academic and General Training) with
-rule-based marking for Listening and Reading, and **Claude-powered marking** for Writing and Speaking
-against the four official criteria of each.
+rule-based marking for Listening and Reading, and **AI marking** for Writing and Speaking
+against the four official criteria of each. You can use a **free** AI provider (Google Gemini, Groq or OpenRouter)
+or a paid one (Claude, OpenAI).
 
 It runs entirely in the browser and is hosted free on GitHub Pages: no server and no database.
 All data stays in your browser.
@@ -20,8 +21,8 @@ All data stays in your browser.
 **Marking**
 - **Listening and Reading:** answers are compared ignoring case, punctuation and spacing. British/American spellings (`colour`/`color`), times (`10 am` / `10:00am`), dates, numbers written as words, and optional words (`(the) library`) are all accepted. Word limits are enforced.
 - **Band conversion:** raw scores convert to bands with the official tables. Overall band rounding follows IELTS rules (.25 rounds up to .5, .75 rounds up to the next whole band).
-- **Writing (Claude):** a band for each criterion (TA/TR, CC, LR, GRA), annotations on the candidate's own text, strengths, next steps, and a **Band 8.5+ model answer** built on the candidate's ideas. Task 2 counts double.
-- **Speaking (Claude):** each criterion is marked from the transcripts plus measured speech rate, pauses and fillers. Notes are attached to the transcript, and recordings can be played back.
+- **Writing (AI examiner):** a band for each criterion (TA/TR, CC, LR, GRA), annotations on the candidate's own text, strengths, next steps, and a **Band 8.5+ model answer** built on the candidate's ideas. Task 2 counts double.
+- **Speaking (AI examiner):** each criterion is marked from the transcripts plus measured speech rate, pauses and fillers. Notes are attached to the transcript, and recordings can be played back.
 
 **Platform**
 - **Dashboard:** progress charts for all 4 skills, a skill radar, weak areas (by question type and criterion), and a day streak.
@@ -35,10 +36,19 @@ All data stays in your browser.
 
 ## AI marking setup
 
-1. Get an API key at [console.anthropic.com](https://console.anthropic.com/).
-2. Open **Settings → AI marking**, paste the key, and click **Test connection**.
+Open **Settings → AI marking**, pick a provider, paste a key, then click **Test connection**.
 
-The key is stored only in your browser and is sent only to `api.anthropic.com`. Without a key, Listening and Reading are still fully marked, and Writing and Speaking wait with a **Mark now** button.
+| Provider | Cost | Notes |
+|---|---|---|
+| **Google Gemini** (recommended) | Free tier | Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Very good marking; daily limits apply. |
+| **Groq** | Free tier | Get a key at [console.groq.com/keys](https://console.groq.com/keys). Very fast open models (default `openai/gpt-oss-120b`). |
+| **OpenRouter** | Free `:free` models | Get a key at [openrouter.ai/keys](https://openrouter.ai/keys). About 50 free requests a day. |
+| **Anthropic Claude** | Paid (~$0.005–0.18 per full test) | The most accurate examiner. Default `claude-opus-5-5`; `claude-haiku-5-5` is the cheapest. |
+| **OpenAI** | Paid | — |
+
+Keys are stored only in your browser and are sent only to the provider you picked. Each provider's key is remembered, so if one free tier hits its daily limit you can switch to another.
+Leave **Model** empty to get the recommended default, or click **Load** to choose from the models your key can use.
+Without a key, Listening and Reading are still fully marked, and Writing and Speaking wait with a **Mark now** button.
 
 Use **Chrome or Edge** for Speaking: live transcription relies on the Web Speech API.
 
@@ -74,3 +84,4 @@ src/
 - Data lives in one browser. Use **Settings → Download backup** to move it, and recordings stay on the device where they were made.
 - There are no user accounts. Student, examiner and admin are pages of the same app, built for self-study or a single teacher. Multi-user use would need a backend.
 - The pronunciation band is estimated from recognition quality and fluency, because the AI reads transcripts rather than listening to the audio.
+- Free AI tiers have daily limits that the providers change from time to time. Free models also mark less consistently than Claude.

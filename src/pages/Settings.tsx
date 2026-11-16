@@ -1,18 +1,13 @@
-import { CheckCircle2, Database, Download, Eye, EyeOff, KeyRound, Loader2, RotateCcw, Upload, User, Volume2 } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { Database, Download, RotateCcw, Upload, User, Volume2 } from 'lucide-react'
+import { useRef, type ReactNode } from 'react'
 import { Button, Card, PageHeader, useToast } from '../components/ui'
 import { ensureSeeded } from '../data/seed'
-import { testConnection } from '../lib/claude'
+import { AISection } from './AISettings'
 import { speak } from '../lib/speech'
 import { exportBackup, importBackup, resetAll, setProfile, setSettings, useDB } from '../lib/store'
 
-const MODELS = [
-  ['claude-sonnet-5-5', 'Claude Sonnet 5.5 — recommended (fast, accurate)'],
-  ['claude-opus-5-5', 'Claude Opus 5.5 — most thorough'],
-  ['claude-haiku-4-5-20251001', 'Claude Haiku 4.5 — fastest, cheapest'],
-] as const
 
-function Section({ icon, title, desc, children, delay }: { icon: ReactNode; title: string; desc: string; children: ReactNode; delay: number }) {
+export function Section({ icon, title, desc, children, delay }: { icon: ReactNode; title: string; desc: string; children: ReactNode; delay: number }) {
   return (
     <Card delay={delay} className="grid gap-6 p-6 md:grid-cols-[260px_1fr]">
       <div>
@@ -27,38 +22,13 @@ function Section({ icon, title, desc, children, delay }: { icon: ReactNode; titl
 export default function Settings() {
   const { settings, profile } = useDB(d => d)
   const toast = useToast()
-  const [show, setShow] = useState(false)
-  const [testing, setTesting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Everything is stored privately in this browser." />
 
-      <Section icon={<KeyRound size={18} />} title="AI marking" delay={0} desc="Writing and Speaking are marked by Anthropic's Claude against the four official criteria. Your key is stored only in this browser and sent only to api.anthropic.com.">
-        <label>
-          <span className="label">Anthropic API key</span>
-          <div className="flex gap-2">
-            <input className="input font-mono" type={show ? 'text' : 'password'} placeholder="sk-ant-…" autoComplete="off" value={settings.apiKey} onChange={e => setSettings({ apiKey: e.target.value.trim() })} />
-            <Button variant="secondary" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide key' : 'Show key'}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</Button>
-          </div>
-          <span className="mt-1 block text-xs text-slate-400">Get one at console.anthropic.com → API keys.</span>
-        </label>
-        <label>
-          <span className="label">Model</span>
-          <select className="input" value={settings.model} onChange={e => setSettings({ model: e.target.value })}>
-            {MODELS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </label>
-        <div>
-          <Button variant="dark" disabled={!settings.apiKey || testing} onClick={async () => {
-            setTesting(true)
-            try { await testConnection(); toast('Connected — AI marking is ready', 'success') } catch (e) { toast((e as Error).message, 'error') } finally { setTesting(false) }
-          }}>
-            {testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test connection
-          </Button>
-        </div>
-      </Section>
+      <AISection />
 
       <Section icon={<User size={18} />} title="Candidate profile" delay={0.05} desc="Shown in the exam header and printed on your Test Report Form.">
         <div className="grid gap-4 sm:grid-cols-2">

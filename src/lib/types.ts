@@ -284,9 +284,14 @@ export interface Profile {
   targetBand: number
 }
 
+export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'anthropic' | 'openai'
+
 export interface Settings {
-  apiKey: string
-  model: string
+  provider: AIProvider
+  /** API key per provider (stored only in this browser) */
+  keys: Partial<Record<AIProvider, string>>
+  /** Chosen model per provider; empty = provider default */
+  models: Partial<Record<AIProvider, string>>
   examinerName: string
   writingPrompt: string
   speakingPrompt: string
