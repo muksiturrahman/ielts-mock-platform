@@ -79,7 +79,7 @@ export function suitableModels(provider: AIProvider, ids: string[]): string[] {
   const stable = ids.filter(id => !/(preview|exp|latest|-\d{4}|-\d{2}-\d{2})/i.test(id))
   if (provider === 'gemini') {
     // Flash: free and strong. Flash-Lite: free with higher limits, a little weaker. Pro has almost no free quota.
-    return [...byNewest(stable.filter(id => /^gemini-[\d.]+-flash$/.test(id))).slice(0, 3), ...byNewest(stable.filter(id => /^gemini-[\d.]+-flash-lite$/.test(id))).slice(0, 2)]
+    return [...byNewest(stable.filter(id => /^gemini-[\d.]+-flash$/.test(id))).slice(0, 5), ...byNewest(stable.filter(id => /^gemini-[\d.]+-flash-lite$/.test(id))).slice(0, 2)]
   }
   if (provider === 'openai') return byNewest(stable.filter(id => /^gpt-[\d.]+(-mini)?$/.test(id))).slice(0, 5)
   if (provider === 'groq') {
@@ -90,19 +90,37 @@ export function suitableModels(provider: AIProvider, ids: string[]): string[] {
   return ids.slice(0, 8)
 }
 
-/** Probes the top suitable models in parallel and keeps the best-ranked one that answers. */
+/**
+ * Tests the suitable models in parallel and keeps the best-ranked one that answers quickly.
+ * Newest isn't always usable: on free tiers the latest models are often overloaded or very slow.
+ */
 async function autoPick(provider: AIProvider, key: string, exclude: string[] = []): Promise<string> {
   const ids = await listModels(provider, key)
   const fixed = PROVIDERS[provider].defaultModel
   const ranked = [...new Set([...(fixed && ids.includes(fixed) ? [fixed] : []), ...suitableModels(provider, ids)])].filter(id => !exclude.includes(id))
   if (!ranked.length) throw new AIError('No suitable model is available for this key.')
   if (provider === 'anthropic') return remember(provider, ranked[0])
-  const candidates = ranked.slice(0, 4)
-  const results = await Promise.allSettled(candidates.map(m => probe(provider, key, m)))
-  const firstOk = candidates.find((_, i) => results[i].status === 'fulfilled')
-  if (firstOk) return remember(provider, firstOk)
-  const rejected = results.find(r => r.status === 'rejected' && !(r.reason instanceof BusyError)) as PromiseRejectedResult | undefined
-  if (rejected) throw rejected.reason
+  const candidates = ranked.slice(0, 7)
+  const errors: unknown[] = []
+  const best = await new Promise<string | undefined>(resolve => {
+    const ok = new Set<string>()
+    let pending = candidates.length
+    let grace: ReturnType<typeof setTimeout> | undefined
+    const decide = () => resolve(candidates.find(c => ok.has(c)))
+    for (const c of candidates) {
+      probe(provider, key, c)
+        .then(() => {
+          ok.add(c)
+          if (c === candidates[0]) decide()
+          // Give better-ranked models a moment to answer too, then take the best that did.
+          grace ??= setTimeout(decide, 2500)
+        }, e => errors.push(e))
+        .finally(() => { if (--pending === 0) decide() })
+    }
+  })
+  if (best) return remember(provider, best)
+  const hard = errors.find(e => !(e instanceof BusyError))
+  if (hard) throw hard
   throw new AIError(`${PROVIDERS[provider].label} isn't answering right now (tried ${candidates.join(', ')}). Try again in a minute, or switch provider.`)
 }
 
