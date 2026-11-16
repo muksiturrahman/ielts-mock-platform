@@ -40,6 +40,11 @@ function migrateSettings(raw: Partial<Settings> & { apiKey?: string; model?: str
     s.provider = 'anthropic'
   }
   if (model?.startsWith('claude') && !s.models.anthropic) s.models.anthropic = model
+  // Before autoModels existed, the automatic Gemini/OpenAI pick was saved as if the user chose it.
+  if (!raw?.autoModels) {
+    s.autoModels = {}
+    for (const p of ['gemini', 'openai'] as const) delete s.models[p]
+  }
   return s
 }
 

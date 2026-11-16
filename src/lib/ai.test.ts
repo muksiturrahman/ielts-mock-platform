@@ -4,19 +4,20 @@ const stored = { 'ielts-mock.db': JSON.stringify({ tests: [], attempts: [], seed
 vi.stubGlobal('localStorage', { getItem: (k: keyof typeof stored) => stored[k] ?? null, setItem: () => {}, removeItem: () => {} })
 vi.stubGlobal('window', { addEventListener: () => {}, dispatchEvent: () => {} })
 
-const { pickDefaultModel, fallbackModels } = await import('./ai')
+const { suitableModels } = await import('./ai')
 const { getDB } = await import('./store')
 
-describe('provider model defaults', () => {
-  it('picks the newest non-lite Gemini Flash', () => {
-    expect(pickDefaultModel('gemini', ['gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.5-pro', 'gemma-4'])).toBe('gemini-3.5-flash')
+describe('suitableModels', () => {
+  const gemini = ['gemini-2.5-flash', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite',
+    'gemini-2.5-pro', 'gemma-4-31b-it', 'nano-banana-pro-preview', 'gemini-3.1-flash-lite-preview', 'gemini-omni-flash-preview']
+  it('keeps only stable Gemini Flash and Flash-Lite, newest first', () => {
+    expect(suitableModels('gemini', gemini)).toEqual(['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'])
   })
-  it('keeps the documented default when available', () => {
-    expect(pickDefaultModel('groq', ['llama-3.3-70b', 'openai/gpt-oss-120b'])).toBe('openai/gpt-oss-120b')
-    expect(pickDefaultModel('groq', ['llama-3.3-70b'])).toBe('llama-3.3-70b')
+  it('puts the documented Groq default first and drops small models', () => {
+    expect(suitableModels('groq', ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'])).toEqual(['openai/gpt-oss-120b', 'llama-3.3-70b-versatile'])
   })
-  it('picks a mini GPT model for OpenAI', () => {
-    expect(pickDefaultModel('openai', ['gpt-4o', 'gpt-5-mini', 'gpt-4.1-mini', 'o3'])).toBe('gpt-5-mini')
+  it('keeps plain GPT models for OpenAI', () => {
+    expect(suitableModels('openai', ['gpt-4o', 'gpt-5-mini', 'gpt-4.1-mini', 'o3', 'gpt-5-mini-2025-08-07'])).toEqual(['gpt-5-mini', 'gpt-4.1-mini'])
   })
 })
 
@@ -28,11 +29,4 @@ describe('settings migration', () => {
     expect(s.models.anthropic).toBe('claude-sonnet-5-5')
     expect('apiKey' in s).toBe(false)
   })
-})
-
-describe('fallbackModels', () => {
-  it('orders Gemini Flash newest first, then Flash-Lite', () => {
-    expect(fallbackModels('gemini', ['gemini-2.5-flash', 'gemini-3-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemma-3'])).toEqual(['gemini-3-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
-  })
-  it('has no fallback for other providers', () => expect(fallbackModels('groq', ['a', 'b'])).toEqual([]))
 })

@@ -1,8 +1,8 @@
 import { motion } from 'motion/react'
-import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2, RefreshCw } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Badge, Button, cx, useToast } from '../components/ui'
-import { listModels, PROVIDER_ORDER, PROVIDERS, testConnection } from '../lib/ai'
+import { listModels, PROVIDER_ORDER, PROVIDERS, suitableModels, testConnection } from '../lib/ai'
 import { setSettings, useDB } from '../lib/store'
 import type { AIProvider } from '../lib/types'
 import { Section } from './Settings'
@@ -16,23 +16,18 @@ export function AISection() {
   const [show, setShow] = useState(false)
   const [testing, setTesting] = useState(false)
   const [models, setModels] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
 
-  useEffect(() => setModels([]), [p])
-
-  const loadModels = async () => {
-    setLoading(true)
-    try {
-      const ids = await listModels(p, key)
-      setModels(ids)
-      toast(`${ids.length} models available`, 'success')
-    } catch (e) {
-      toast((e as Error).message, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
-  const options = [...new Set([...(settings.models[p] ? [settings.models[p]!] : []), ...info.suggested, ...models])]
+  // Load the short list of models that suit marking whenever the provider or key changes.
+  useEffect(() => {
+    setModels([])
+    if (!key) return
+    let live = true
+    const t = setTimeout(() => void listModels(p, key).then(ids => live && setModels(suitableModels(p, ids))).catch(() => {}), 400)
+    return () => { live = false; clearTimeout(t) }
+  }, [p, key])
+  const chosen = settings.models[p] ?? ''
+  const auto = settings.autoModels?.[p] || info.defaultModel
+  const options = [...new Set([...(chosen ? [chosen] : []), ...models])]
 
   return (
     <Section icon={<KeyRound size={18} />} title="AI marking" delay={0}
@@ -67,7 +62,7 @@ export function AISection() {
         </span>
         <div className="flex gap-2">
           <input className="input font-mono" type={show ? 'text' : 'password'} autoComplete="off" spellCheck={false} placeholder="Paste your key"
-            value={key} onChange={e => setSettings({ keys: { ...settings.keys, [p]: e.target.value.trim() } })} />
+            value={key} onChange={e => setSettings({ keys: { ...settings.keys, [p]: e.target.value.trim() }, autoModels: { ...settings.autoModels, [p]: undefined } })} />
           <Button variant="secondary" onClick={() => setShow(s => !s)} aria-label={show ? 'Hide key' : 'Show key'}>{show ? <EyeOff size={16} /> : <Eye size={16} />}</Button>
         </div>
         {info.free && <span className="mt-1 block text-xs text-slate-400">Free tiers have daily limits. If you hit one, switch to another free provider — keys for each are remembered.</span>}
@@ -75,15 +70,14 @@ export function AISection() {
 
       <label>
         <span className="label">Model</span>
-        <div className="flex gap-2">
-          <input className="input" list={`models-${p}`} placeholder={info.defaultModel || 'Automatic — best available model'}
-            value={settings.models[p] ?? ''} onChange={e => setSettings({ models: { ...settings.models, [p]: e.target.value.trim() } })} />
-          <datalist id={`models-${p}`}>{options.map(m => <option key={m} value={m} />)}</datalist>
-          <Button variant="secondary" disabled={!key || loading} onClick={loadModels} title="Load the models this key can use">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />} Load
-          </Button>
-        </div>
-        <span className="mt-1 block text-xs text-slate-400">Leave empty for the recommended default{info.defaultModel ? ` (${info.defaultModel})` : ', picked automatically from your key’s models'}.</span>
+        <select className="input" value={chosen} disabled={!key}
+          onChange={e => setSettings({ models: { ...settings.models, [p]: e.target.value } })}>
+          <option value="">Automatic (recommended){auto ? ` — using ${auto}` : ''}</option>
+          {options.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <span className="mt-1 block text-xs text-slate-400">
+          {chosen ? 'Fixed model. Switch back to Automatic if it gets slow or busy.' : 'Automatic tests the best free models for your key and uses the best one that answers. If it gets busy, the app switches by itself.'}
+        </span>
       </label>
 
       <div>
@@ -91,7 +85,7 @@ export function AISection() {
           setTesting(true)
           try { const m = await testConnection(); toast(`Connected to ${info.label} (${m}) — AI marking is ready`, 'success') } catch (e) { toast((e as Error).message, 'error') } finally { setTesting(false) }
         }}>
-          {testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Test connection
+          {testing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {testing ? 'Testing…' : 'Test connection'}
         </Button>
       </div>
     </Section>

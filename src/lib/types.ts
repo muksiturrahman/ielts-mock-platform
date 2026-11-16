@@ -290,8 +290,10 @@ export interface Settings {
   provider: AIProvider
   /** API key per provider (stored only in this browser) */
   keys: Partial<Record<AIProvider, string>>
-  /** Chosen model per provider; empty = provider default */
+  /** Model the user picked per provider; empty = automatic */
   models: Partial<Record<AIProvider, string>>
+  /** Model the app chose automatically (tested to work with this key) */
+  autoModels?: Partial<Record<AIProvider, string>>
   examinerName: string
   writingPrompt: string
   speakingPrompt: string

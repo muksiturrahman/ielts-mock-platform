@@ -72,27 +72,54 @@ export async function listModels(provider: AIProvider, key: string): Promise<str
   return ids.filter(textOnly)
 }
 
-/** Best default from a live list: the newest non-lite Gemini Flash, or a mini GPT model. */
-export function pickDefaultModel(provider: AIProvider, ids: string[]): string | undefined {
+/** Models that are good for essay/speaking marking, best first. Hides image, audio, preview, small and niche models. */
+export function suitableModels(provider: AIProvider, ids: string[]): string[] {
   const version = (id: string) => Number(id.match(/(\d+(?:\.\d+)?)/)?.[1] ?? 0)
-  const newest = (xs: string[]) => [...xs].sort((a, b) => version(b) - version(a))[0]
+  const byNewest = (xs: string[]) => [...xs].sort((a, b) => version(b) - version(a))
+  const stable = ids.filter(id => !/(preview|exp|latest|-\d{4}|-\d{2}-\d{2})/i.test(id))
   if (provider === 'gemini') {
-    const flash = ids.filter(id => /gemini-[\d.]+-flash$/.test(id))
-    return newest(flash) ?? newest(ids.filter(id => /flash/.test(id) && !/lite/.test(id))) ?? ids[0]
+    // Flash: free and strong. Flash-Lite: free with higher limits, a little weaker. Pro has almost no free quota.
+    return [...byNewest(stable.filter(id => /^gemini-[\d.]+-flash$/.test(id))).slice(0, 3), ...byNewest(stable.filter(id => /^gemini-[\d.]+-flash-lite$/.test(id))).slice(0, 2)]
   }
-  if (provider === 'openai') return newest(ids.filter(id => /^gpt-[\d.]+(-mini)?$/.test(id) && id.includes('mini'))) ?? newest(ids.filter(id => /^gpt-/.test(id)))
-  return ids.includes(PROVIDERS[provider].defaultModel) ? PROVIDERS[provider].defaultModel : ids[0]
+  if (provider === 'openai') return byNewest(stable.filter(id => /^gpt-[\d.]+(-mini)?$/.test(id))).slice(0, 5)
+  if (provider === 'groq') {
+    const good = stable.filter(id => /gpt-oss-120b|llama-3\.3-70b|kimi-k2|qwen3-32b/i.test(id))
+    return [...(good.includes(PROVIDERS.groq.defaultModel) ? [PROVIDERS.groq.defaultModel] : []), ...good.filter(id => id !== PROVIDERS.groq.defaultModel)]
+  }
+  if (provider === 'anthropic') return ids.filter(id => /^claude-(opus|sonnet|haiku)-[\d-]+$/.test(id)).slice(0, 5)
+  return ids.slice(0, 8)
 }
 
+/** Probes the top suitable models in parallel and keeps the best-ranked one that answers. */
+async function autoPick(provider: AIProvider, key: string, exclude: string[] = []): Promise<string> {
+  const ids = await listModels(provider, key)
+  const fixed = PROVIDERS[provider].defaultModel
+  const ranked = [...new Set([...(fixed && ids.includes(fixed) ? [fixed] : []), ...suitableModels(provider, ids)])].filter(id => !exclude.includes(id))
+  if (!ranked.length) throw new AIError('No suitable model is available for this key.')
+  if (provider === 'anthropic') return remember(provider, ranked[0])
+  const candidates = ranked.slice(0, 4)
+  const results = await Promise.allSettled(candidates.map(m => probe(provider, key, m)))
+  const firstOk = candidates.find((_, i) => results[i].status === 'fulfilled')
+  if (firstOk) return remember(provider, firstOk)
+  const rejected = results.find(r => r.status === 'rejected' && !(r.reason instanceof BusyError)) as PromiseRejectedResult | undefined
+  if (rejected) throw rejected.reason
+  throw new AIError(`${PROVIDERS[provider].label} isn't answering right now (tried ${candidates.join(', ')}). Try again in a minute, or switch provider.`)
+}
+
+function remember(provider: AIProvider, model: string) {
+  const s = getDB().settings
+  setSettings({ autoModels: { ...s.autoModels, [provider]: model } })
+  return model
+}
+
+const probe = (provider: AIProvider, key: string, model: string) =>
+  callModel<{ ok: string }>(provider, key, model, 'You check connectivity.', 'Reply with ok = "ready".', PROBE_SCHEMA, 1000)
+const PROBE_SCHEMA = { type: 'object', properties: { ok: { type: 'string' } }, required: ['ok'], additionalProperties: false }
+
+/** The user's pick, else the fixed default, else the automatic choice (tested once, then remembered). */
 async function resolveModel(provider: AIProvider, key: string): Promise<string> {
   const s = getDB().settings
-  const chosen = s.models[provider]?.trim() || PROVIDERS[provider].defaultModel
-  if (chosen) return chosen
-  // No sensible fixed default (model names change often) — pick from the live list once and remember it.
-  const picked = pickDefaultModel(provider, await listModels(provider, key))
-  if (!picked) throw new AIError('No suitable model found for this key. Pick one in Settings.')
-  setSettings({ models: { ...s.models, [provider]: picked } })
-  return picked
+  return s.models[provider]?.trim() || PROVIDERS[provider].defaultModel || s.autoModels?.[provider] || autoPick(provider, key)
 }
 
 // ---------- structured calls ----------
@@ -148,30 +175,17 @@ async function callOpenAICompatible<T>(provider: AIProvider, key: string, model:
   for (;;) {
     tried.push(current)
     try {
-      const out = await callModel<T>(provider, key, current, system, user, schema, maxTokens)
-      // Remember the model that answered so the next call goes straight to it.
-      if (current !== model) setSettings({ models: { ...getDB().settings.models, [provider]: current } })
-      return out
+      return await callModel<T>(provider, key, current, system, user, schema, maxTokens)
     } catch (e) {
-      if (!(e instanceof BusyError)) throw e
-      const ids = await listModels(provider, key).catch(() => [] as string[])
-      const next = fallbackModels(provider, ids).find(id => !tried.includes(id))
-      if (!next || tried.length >= 4) throw new AIError(`${PROVIDERS[provider].label} isn't answering right now (tried ${tried.join(', ')}). Try again in a minute, or switch provider in Settings.`)
-      current = next
+      if (!(e instanceof BusyError) || tried.length >= 3) throw e instanceof BusyError ? new AIError(`${PROVIDERS[provider].label} isn't answering right now (tried ${tried.join(', ')}). Try again in a minute, or switch provider in Settings.`) : e
+      // Find another working model; it becomes the automatic choice for next time.
+      current = await autoPick(provider, key, tried)
     }
   }
 }
 
 /** The model is overloaded, timed out, or not available to this key: worth trying another model. */
 class BusyError extends Error {}
-
-/** Other models worth trying when the chosen one is overloaded: Flash first, then Flash-Lite, newest first. */
-export function fallbackModels(provider: AIProvider, ids: string[]): string[] {
-  if (provider !== 'gemini') return []
-  const version = (id: string) => Number(id.match(/(\d+(?:\.\d+)?)/)?.[1] ?? 0)
-  const byNewest = (xs: string[]) => [...xs].sort((a, b) => version(b) - version(a))
-  return [...byNewest(ids.filter(id => /gemini-[\d.]+-flash$/.test(id))), ...byNewest(ids.filter(id => /gemini-[\d.]+-flash-lite$/.test(id)))]
-}
 
 async function callModel<T>(provider: AIProvider, key: string, model: string, system: string, user: string, schema: object, maxTokens: number): Promise<T> {
   const info = PROVIDERS[provider]
@@ -205,7 +219,7 @@ async function callModel<T>(provider: AIProvider, key: string, model: string, sy
       const msg = await res.clone().text()
       if (/response_format|json/i.test(msg)) res = await send(false)
     }
-    for (const delay of [1500, 4000]) {
+    for (const delay of maxTokens <= 1000 ? [] : [1500, 4000]) {
       if (!BUSY.has(res.status)) break
       await wait(delay)
       res = await send(true)
@@ -237,12 +251,15 @@ async function callModel<T>(provider: AIProvider, key: string, model: string, sy
 }
 
 export async function testConnection(): Promise<string> {
-  const r = await callStructured<{ ok: string }>('You check connectivity.', 'Reply with ok = "ready".', {
-    type: 'object', properties: { ok: { type: 'string' } }, required: ['ok'], additionalProperties: false,
-  }, 1000)
-  if (!r.ok) throw new AIError('Unexpected reply from the AI.')
   const s = getDB().settings
-  return s.models[s.provider] || PROVIDERS[s.provider].defaultModel
+  const provider = s.provider
+  const key = activeKey()
+  if (!key) throw new AIError(`Add your ${PROVIDERS[provider].label} API key first.`)
+  const chosen = s.models[provider]?.trim() || PROVIDERS[provider].defaultModel
+  // Automatic: re-test the best models now, so a newer or less busy one can take over.
+  if (!chosen) return autoPick(provider, key)
+  await probe(provider, key, chosen)
+  return chosen
 }
 
 // ---------- schemas (Claude structured outputs: every object closed, every property required) ----------
