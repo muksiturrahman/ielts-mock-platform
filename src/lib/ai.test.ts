@@ -4,7 +4,7 @@ const stored = { 'ielts-mock.db': JSON.stringify({ tests: [], attempts: [], seed
 vi.stubGlobal('localStorage', { getItem: (k: keyof typeof stored) => stored[k] ?? null, setItem: () => {}, removeItem: () => {} })
 vi.stubGlobal('window', { addEventListener: () => {}, dispatchEvent: () => {} })
 
-const { pickDefaultModel } = await import('./ai')
+const { pickDefaultModel, fallbackModels } = await import('./ai')
 const { getDB } = await import('./store')
 
 describe('provider model defaults', () => {
@@ -28,4 +28,11 @@ describe('settings migration', () => {
     expect(s.models.anthropic).toBe('claude-sonnet-5-5')
     expect('apiKey' in s).toBe(false)
   })
+})
+
+describe('fallbackModels', () => {
+  it('orders Gemini Flash newest first, then Flash-Lite', () => {
+    expect(fallbackModels('gemini', ['gemini-2.5-flash', 'gemini-3-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemma-3'])).toEqual(['gemini-3-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+  })
+  it('has no fallback for other providers', () => expect(fallbackModels('groq', ['a', 'b'])).toEqual([]))
 })

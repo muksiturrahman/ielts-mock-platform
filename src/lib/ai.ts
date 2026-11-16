@@ -138,7 +138,38 @@ async function callClaude<T>(key: string, model: string, system: string, user: s
 }
 
 /** Gemini, Groq, OpenRouter and OpenAI all speak the OpenAI chat-completions API. */
+const BUSY = new Set([500, 502, 503, 504])
+const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/** Busy models (503 "high demand") are common on free tiers: retry, then try other models from the same provider. */
 async function callOpenAICompatible<T>(provider: AIProvider, key: string, model: string, system: string, user: string, schema: object, maxTokens: number): Promise<T> {
+  const tried: string[] = []
+  let current = model
+  for (;;) {
+    tried.push(current)
+    try {
+      return await callModel<T>(provider, key, current, system, user, schema, maxTokens)
+    } catch (e) {
+      if (!(e instanceof BusyError)) throw e
+      const ids = await listModels(provider, key).catch(() => [] as string[])
+      const next = fallbackModels(provider, ids).find(id => !tried.includes(id))
+      if (!next || tried.length >= 3) throw new AIError(`${PROVIDERS[provider].label} is overloaded right now (tried ${tried.join(', ')}). Try again in a minute, or switch provider in Settings.`)
+      current = next
+    }
+  }
+}
+
+class BusyError extends Error {}
+
+/** Other models worth trying when the chosen one is overloaded: Flash first, then Flash-Lite, newest first. */
+export function fallbackModels(provider: AIProvider, ids: string[]): string[] {
+  if (provider !== 'gemini') return []
+  const version = (id: string) => Number(id.match(/(\d+(?:\.\d+)?)/)?.[1] ?? 0)
+  const byNewest = (xs: string[]) => [...xs].sort((a, b) => version(b) - version(a))
+  return [...byNewest(ids.filter(id => /gemini-[\d.]+-flash$/.test(id))), ...byNewest(ids.filter(id => /gemini-[\d.]+-flash-lite$/.test(id)))]
+}
+
+async function callModel<T>(provider: AIProvider, key: string, model: string, system: string, user: string, schema: object, maxTokens: number): Promise<T> {
   const info = PROVIDERS[provider]
   const body = (jsonMode: boolean) => ({
     model,
@@ -168,6 +199,11 @@ async function callOpenAICompatible<T>(provider: AIProvider, key: string, model:
       const msg = await res.clone().text()
       if (/response_format|json/i.test(msg)) res = await send(false)
     }
+    for (const delay of [1500, 4000]) {
+      if (!BUSY.has(res.status)) break
+      await wait(delay)
+      res = await send(true)
+    }
   } catch (e) {
     throw new AIError(`Could not reach ${info.label}: ${(e as Error).message}`)
   }
@@ -175,6 +211,7 @@ async function callOpenAICompatible<T>(provider: AIProvider, key: string, model:
     const err = await res.json().catch(() => ({}))
     const msg = err?.error?.message ?? (Array.isArray(err) ? err[0]?.error?.message : undefined) ?? res.statusText
     if (res.status === 401 || res.status === 403 || /api.key (not valid|invalid)|invalid api.key/i.test(msg)) throw new AIError(`Your ${info.label} API key was rejected. Check it in Settings.`)
+    if (BUSY.has(res.status) || /high demand|overloaded/i.test(msg)) throw new BusyError(msg)
     if (res.status === 429) throw new AIError(`${info.label} rate limit or free daily quota reached. Wait, or switch provider in Settings.`)
     if (res.status === 404) throw new AIError(`Model “${model}” isn't available on ${info.label}. Pick another in Settings.`)
     throw new AIError(`AI marking failed (${res.status}): ${msg}`)
