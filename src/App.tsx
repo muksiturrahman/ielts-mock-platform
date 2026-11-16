@@ -1,13 +1,15 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Settings as SettingsIcon, ShieldCheck, Sparkles, X } from 'lucide-react'
-import { useState } from 'react'
+import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { ToastProvider, cx } from './components/ui'
-import { useDB } from './lib/store'
+import { setSettings, useDB } from './lib/store'
+import { applyTheme } from './lib/theme'
 import { PROVIDERS } from './lib/ai'
 import Dashboard from './pages/Dashboard'
 import Tests from './pages/Tests'
 import HistoryPage from './pages/History'
+import Mistakes from './pages/Mistakes'
 import Results from './pages/Results'
 import Admin from './pages/Admin'
 import TestEditor from './pages/TestEditor'
@@ -19,6 +21,7 @@ const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/tests', label: 'Mock tests', icon: BookOpenCheck },
   { to: '/history', label: 'My results', icon: History },
+  { to: '/mistakes', label: 'Mistakes', icon: NotebookPen },
   { to: '/examiner', label: 'Examiner', icon: ClipboardCheck },
   { to: '/admin', label: 'Admin', icon: ShieldCheck },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -58,7 +61,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </NavLink>
         ))}
       </nav>
-      <div className="mt-auto">
+      <div className="mt-auto space-y-3">
+        <ThemeToggle />
         <NavLink to="/settings" onClick={onNavigate} className={cx('block rounded-2xl p-4 text-sm transition hover:scale-[1.02]', hasKey ? 'bg-emerald-50' : 'bg-gradient-to-br from-brand-600 to-violet-600 text-white')}>
           <div className="flex items-center gap-2 font-semibold">
             <Sparkles size={16} /> {hasKey ? 'AI marking active' : 'Enable AI marking'}
@@ -72,9 +76,32 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+const THEMES = [
+  { id: 'light', label: 'Light', icon: Sun },
+  { id: 'dark', label: 'Dark', icon: Moon },
+  { id: 'system', label: 'System', icon: Monitor },
+] as const
+
+function ThemeToggle() {
+  const theme = useDB(d => d.settings.theme)
+  return (
+    <div className="flex rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="Theme">
+      {THEMES.map(t => (
+        <button key={t.id} role="radio" aria-checked={theme === t.id} title={t.label} onClick={() => setSettings({ theme: t.id })}
+          className={cx('relative flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition', theme === t.id ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800')}>
+          {theme === t.id && <motion.span layoutId="theme-pill" className="absolute inset-0 rounded-lg bg-white shadow-sm" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
+          <t.icon size={14} className="relative" /><span className="relative">{t.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function App() {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const theme = useDB(d => d.settings.theme)
+  useEffect(applyTheme, [theme])
 
   // The exam runs full-screen, without app chrome — like the real test centre.
   if (location.pathname.startsWith('/exam/')) {
@@ -120,6 +147,7 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tests" element={<Tests />} />
                 <Route path="/history" element={<HistoryPage />} />
+                <Route path="/mistakes" element={<Mistakes />} />
                 <Route path="/results/:attemptId" element={<Results />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/tests/:testId" element={<TestEditor />} />

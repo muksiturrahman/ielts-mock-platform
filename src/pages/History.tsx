@@ -1,19 +1,31 @@
 import { motion } from 'motion/react'
 import { ArrowRight, History as HistoryIcon, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Button, Empty, PageHeader, bandColor, fmtBand, fmtDate, useToast } from '../components/ui'
+import { Badge, Button, Empty, PageHeader, cx, bandColor, fmtBand, fmtDate, useToast } from '../components/ui'
 import { attemptOverall, MODULE_LABEL, moduleBands } from '../lib/attempts'
 import { deleteMedia } from '../lib/media'
 import { deleteAttempt, useDB } from '../lib/store'
 
 export default function HistoryPage() {
-  const attempts = useDB(d => [...d.attempts].sort((a, b) => b.startedAt - a.startedAt))
+  const all = useDB(d => [...d.attempts].sort((a, b) => b.startedAt - a.startedAt))
   const toast = useToast()
+  const [mode, setMode] = useState<'all' | 'full' | 'practice'>('all')
+  const [mod, setMod] = useState<'all' | 'listening' | 'reading' | 'writing' | 'speaking'>('all')
+  const attempts = all.filter(a => (mode === 'all' || a.mode === mode) && (mod === 'all' || a.modules.includes(mod)))
+  const chip = (on: boolean) => cx('rounded-full border px-3 py-1 text-sm font-medium transition', on ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')
   return (
     <div>
       <PageHeader title="My results" subtitle="Every attempt, with full feedback. In-progress tests can be resumed." />
+      {all.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {(['all', 'full', 'practice'] as const).map(m => <button key={m} onClick={() => setMode(m)} className={chip(mode === m)}>{m === 'all' ? 'All modes' : m === 'full' ? 'Full mocks' : 'Practice'}</button>)}
+          <span className="mx-1 w-px bg-slate-200" />
+          {(['all', 'listening', 'reading', 'writing', 'speaking'] as const).map(m => <button key={m} onClick={() => setMod(m)} className={chip(mod === m)}>{m === 'all' ? 'All modules' : MODULE_LABEL[m]}</button>)}
+        </div>
+      )}
       {attempts.length === 0 ? (
-        <Empty icon={<HistoryIcon />} title="No attempts yet">Start a mock test from the catalogue.</Empty>
+        <Empty icon={<HistoryIcon />} title={all.length ? 'No attempts match these filters' : 'No attempts yet'}>{all.length ? 'Try another filter.' : 'Start a mock test from the catalogue.'}</Empty>
       ) : (
         <div className="space-y-3">
           {attempts.map((a, i) => {
@@ -33,7 +45,10 @@ export default function HistoryPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
                     <span>{fmtDate(a.startedAt)}</span>
-                    {a.modules.map(m => <span key={m}>{MODULE_LABEL[m]} <b className="text-slate-700">{fmtBand(bands[m])}</b></span>)}
+                    {a.modules.map(m => {
+                      const r = m === 'listening' || m === 'reading' ? a.results[m] : undefined
+                      return <span key={m}>{MODULE_LABEL[m]} <b className="text-slate-700">{fmtBand(bands[m])}</b>{r && <span className="ml-1 text-slate-400">({r.items.filter(x => x.isCorrect).length}/{r.items.length})</span>}</span>
+                    })}
                   </div>
                 </div>
                 <div className="flex gap-2">

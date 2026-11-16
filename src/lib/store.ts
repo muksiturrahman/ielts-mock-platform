@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   examinerName: 'Examiner',
   writingPrompt: DEFAULT_WRITING_PROMPT,
   speakingPrompt: DEFAULT_SPEAKING_PROMPT,
+  theme: 'system',
   fontScale: 1,
   contrast: 'standard',
   ttsRate: 0.95,

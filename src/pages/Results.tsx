@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, ArrowLeft, CheckCircle2, Download, KeyRound, Loader2, Play, RefreshCw, Sparkles, XCircle } from 'lucide-react'
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { ExamReview } from '../components/ExamReview'
+import { questionText, locateQuestion } from '../lib/review'
 import { Badge, BandRing, Button, Card, bandColor, cx, fmtBand, fmtDate } from '../components/ui'
 import { attemptOverall, markSpeaking, markWriting, MODULE_LABEL, moduleBands } from '../lib/attempts'
 import { resolveMediaUrl } from '../lib/media'
@@ -16,7 +18,10 @@ export default function Results() {
   const { attemptId } = useParams()
   const attempt = useDB(d => d.attempts.find(a => a.id === attemptId))
   const test = useDB(d => d.tests.find(t => t.id === attempt?.testId))
-  const [tab, setTab] = useState<Tab>('overview')
+  // ?tab=reading&q=12 opens the full review at question 12 (links from the Mistakes page).
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<Tab>((params.get('tab') as Tab) || 'overview')
+  const focus = Number(params.get('q')) || undefined
   if (!attempt) return <Navigate to="/history" replace />
 
   const bands = moduleBands(attempt)
@@ -28,7 +33,7 @@ export default function Results() {
       <Link to="/history" className="no-print mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800"><ArrowLeft size={16} /> My results</Link>
 
       <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="no-print card mb-6 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-6 bg-gradient-to-r from-slate-900 to-brand-700 p-6 text-white">
+        <div className="flex flex-wrap items-center gap-6 bg-gradient-to-r from-slate-900 to-brand-600 p-6 text-white">
           <div className="flex-1">
             <div className="flex flex-wrap gap-2">
               <Badge tone="violet">{attempt.variant === 'academic' ? 'Academic' : 'General Training'}</Badge>
@@ -73,7 +78,7 @@ export default function Results() {
       <AnimatePresence mode="wait">
         <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22 }}>
           {tab === 'overview' && <Overview attempt={attempt} bands={bands} onOpen={setTab} />}
-          {(tab === 'listening' || tab === 'reading') && attempt.results[tab] && <ObjectiveView result={attempt.results[tab]!} test={test} module={tab} />}
+          {(tab === 'listening' || tab === 'reading') && attempt.results[tab] && <ObjectiveView result={attempt.results[tab]!} test={test} module={tab} attempt={attempt} focus={focus} />}
           {tab === 'writing' && <WritingView attempt={attempt} test={test} />}
           {tab === 'speaking' && <SpeakingView attempt={attempt} />}
           {tab === 'report' && <TestReportForm attempt={attempt} />}
@@ -177,42 +182,61 @@ function TypeBars({ result }: { result: ObjectiveResult }) {
   )
 }
 
-function ObjectiveView({ result, test, module }: { result: ObjectiveResult; test?: Test; module: 'listening' | 'reading' }) {
+function ObjectiveView({ result, test, module, attempt, focus }: { result: ObjectiveResult; test?: Test; module: 'listening' | 'reading'; attempt: Attempt; focus?: number }) {
   const [open, setOpen] = useState<string>()
-  const explanations = new Map(
-    (module === 'listening' ? test?.listening?.sections : test?.reading?.sections)?.flatMap(s => s.groups.flatMap(g => g.questions.map(q => [q.id, q.explanation] as const))) ?? [],
-  )
+  const [view, setView] = useState<'review' | 'sheet'>(test ? 'review' : 'sheet')
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <Card className="h-fit p-6">
-        <div className="flex flex-col items-center">
-          <BandRing band={result.band} size={140} label={MODULE_LABEL[module]} />
-          <p className="mt-3 font-semibold text-slate-700">{result.raw} / {result.total} correct</p>
-        </div>
-        <div className="mt-6"><TypeBars result={result} /></div>
-      </Card>
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-            <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Your answer</th><th className="px-4 py-3">Correct answer</th><th className="px-4 py-3" /></tr>
-          </thead>
-          <tbody>
-            {result.items.map(it => (
-              <Fragment key={it.questionId}>
-                <tr onClick={() => setOpen(o => (o === it.questionId ? undefined : it.questionId))} className={cx('cursor-pointer border-t border-slate-100 transition hover:bg-slate-50', open === it.questionId && 'bg-slate-50')}>
-                  <td className="px-4 py-2.5 font-semibold">{it.number}</td>
-                  <td className={cx('px-4 py-2.5', !it.given && 'italic text-slate-400')}>{it.given || 'No answer'}</td>
-                  <td className="px-4 py-2.5 font-medium">{it.correct}</td>
-                  <td className="px-4 py-2.5">{it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}</td>
-                </tr>
-                {open === it.questionId && explanations.get(it.questionId) && (
-                  <tr><td colSpan={4} className="bg-brand-50/50 px-4 py-3 text-slate-600">{explanations.get(it.questionId)}</td></tr>
-                )}
-              </Fragment>
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <Card className="h-fit p-6">
+          <div className="flex flex-col items-center">
+            <BandRing band={result.band} size={140} label={MODULE_LABEL[module]} />
+            <p className="mt-3 font-semibold text-slate-700">{result.raw} / {result.total} correct</p>
+          </div>
+          <div className="mt-6"><TypeBars result={result} /></div>
+        </Card>
+        <div className="space-y-4">
+          <div className="flex w-fit gap-1 rounded-2xl bg-white p-1 shadow-sm">
+            {([['review', 'Full review'], ['sheet', 'Answer sheet']] as const).map(([k, l]) => (
+              <button key={k} disabled={k === 'review' && !test} onClick={() => setView(k)}
+                className={cx('relative rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-40', view === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
+                {view === k && <motion.span layoutId={`view-${module}`} className="absolute inset-0 rounded-xl bg-slate-900" />}
+                <span className="relative">{l}</span>
+              </button>
             ))}
-          </tbody>
-        </table>
-      </Card>
+          </div>
+          {view === 'review' && test ? (
+            <ExamReview attempt={attempt} test={test} module={module} result={result} focus={focus} />
+          ) : (
+            <Card className="overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+                  <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Question</th><th className="px-4 py-3">Your answer</th><th className="px-4 py-3">Correct answer</th><th className="px-4 py-3" /></tr>
+                </thead>
+                <tbody>
+                  {result.items.map(it => {
+                    const loc = locateQuestion(test, module, it.questionId)
+                    return (
+                      <Fragment key={it.questionId}>
+                        <tr onClick={() => setOpen(o => (o === it.questionId ? undefined : it.questionId))} className={cx('cursor-pointer border-t border-slate-100 transition hover:bg-slate-50', open === it.questionId && 'bg-slate-50', !it.isCorrect && 'bg-rose-50/40')}>
+                          <td className="px-4 py-2.5 font-semibold">{it.number}</td>
+                          <td className="max-w-xs truncate px-4 py-2.5 text-slate-600" title={questionText(loc)}>{questionText(loc) || '—'}</td>
+                          <td className={cx('px-4 py-2.5', !it.given && 'italic text-slate-400', !it.isCorrect && it.given && 'text-rose-600 line-through decoration-rose-300')}>{it.given || 'No answer'}</td>
+                          <td className="px-4 py-2.5 font-medium text-emerald-700">{loc?.question.answer.join(' / ') ?? it.correct}</td>
+                          <td className="px-4 py-2.5">{it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}</td>
+                        </tr>
+                        {open === it.questionId && loc?.question.explanation && (
+                          <tr><td colSpan={5} className="bg-brand-50/50 px-4 py-3 text-slate-600">{loc.question.explanation}</td></tr>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

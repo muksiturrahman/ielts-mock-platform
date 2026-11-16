@@ -77,7 +77,7 @@ export function BandRing({ band, size = 120, label, stroke = 10 }: { band?: numb
   return (
     <div className="relative inline-flex flex-col items-center" style={{ width: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#eef2f7" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} style={{ stroke: 'var(--color-slate-100)' }} strokeWidth={stroke} fill="none" />
         <motion.circle
           cx={size / 2} cy={size / 2} r={r} fill="none" stroke={bandColor(band)} strokeWidth={stroke} strokeLinecap="round"
           strokeDasharray={c}

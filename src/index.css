@@ -54,6 +54,51 @@ body {
 .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 }
 }
 
+/* ---------- Dark theme ----------
+   The palette is remapped instead of adding dark: variants everywhere, so every page flips consistently.
+   slate-800/900 stay dark because they are used as dark button/pill backgrounds. */
+.dark {
+  color-scheme: dark;
+  --color-slate-50: #0b1120;
+  --color-slate-100: #1e293b;
+  --color-slate-200: #273449;
+  --color-slate-300: #334155;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #a3b1c6;
+  --color-slate-700: #cbd5e1;
+  --color-brand-50: #1e1b4b;
+  --color-brand-100: #312e81;
+  --color-brand-200: #3730a3;
+  --color-brand-700: #a5b4fc;
+  --color-emerald-50: #06281e;
+  --color-emerald-300: #065f46;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-900: #a7f3d0;
+  --color-amber-50: #2a1a05;
+  --color-amber-200: #78350f;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-rose-50: #2a0a12;
+  --color-rose-300: #9f1239;
+  --color-rose-700: #fda4af;
+  --color-rose-900: #fecdd3;
+  --color-sky-50: #082f49;
+  --color-sky-700: #7dd3fc;
+  --color-violet-50: #2e1065;
+  --color-violet-700: #c4b5fd;
+  --color-pink-50: #500724;
+  --color-blue-50: #172554;
+}
+.dark .text-slate-900 { color: #f8fafc }
+.dark .text-slate-800 { color: #e2e8f0 }
+.dark .bg-white, .dark .card { background-color: #111827 }
+.dark .bg-white\/95 { background-color: rgb(17 24 39 / 0.95) }
+.dark .bg-white\/80 { background-color: rgb(17 24 39 / 0.8) }
+.dark .bg-white\/60 { background-color: rgb(17 24 39 / 0.6) }
+.dark .shadow-slate-200\/50 { --tw-shadow-color: transparent }
+.dark ::selection { background: #3730a3 }
+
 /* ---------- Exam (computer-delivered IELTS look) ---------- */
 .exam {
   --exam-bg: #ffffff;
@@ -64,6 +109,10 @@ body {
   background: var(--exam-bg);
   color: var(--exam-fg);
   font-size: calc(16px * var(--exam-scale, 1));
+}
+/* Dark app theme: the exam's standard mode becomes a calm dark palette (yellow/white-on-black stay official). */
+.dark .exam[data-contrast='standard'] {
+  --exam-bg: #0f172a; --exam-fg: #e5e7eb; --exam-muted: #1e293b; --exam-line: #334155; --exam-accent: #818cf8;
 }
 .exam[data-contrast='yellow-black'] {
   --exam-bg: #000000; --exam-fg: #ffff00; --exam-muted: #1a1a1a; --exam-line: #ffff00; --exam-accent: #ffff00;

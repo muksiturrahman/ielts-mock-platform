@@ -295,6 +295,7 @@ export interface Settings {
   examinerName: string
   writingPrompt: string
   speakingPrompt: string
+  theme: 'system' | 'light' | 'dark'
   fontScale: number
   contrast: 'standard' | 'yellow-black' | 'white-black'
   ttsRate: number

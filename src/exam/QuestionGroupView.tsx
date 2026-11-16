@@ -35,13 +35,14 @@ function isRight(g: QuestionGroup, q: Question, answers: Record<string, AnswerVa
   return q.answer.some(a => a.toUpperCase() === given.toUpperCase())
 }
 
-function Feedback({ ok, q }: { ok: boolean; q: Question }) {
+function Feedback({ ok, q, given }: { ok: boolean; q: Question; given: string }) {
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`mt-2 rounded-lg border px-3 py-2 text-sm ${ok ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-rose-300 bg-rose-50 text-rose-900'}`}>
       <div className="flex items-center gap-1.5 font-semibold">
         {ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-        {ok ? 'Correct' : `Answer: ${q.answer[0]}`}
+        {ok ? 'Correct' : `Correct answer: ${q.answer.join(' / ')}`}
       </div>
+      {!ok && <div className="mt-0.5">Your answer: {given ? <b>{given}</b> : <i>no answer</i>}</div>}
       {q.explanation && <p className="mt-1 opacity-90">{q.explanation}</p>}
     </motion.div>
   )
@@ -166,7 +167,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
                     ))}
                   </div>
                 )}
-                {review && <div className="ml-8"><Feedback ok={isRight(g, q, answers)} q={q} /></div>}
+                {review && <div className="ml-8"><Feedback ok={isRight(g, q, answers)} q={q} given={String(answers[q.id] ?? '')} /></div>}
               </div>
             )
           })}
