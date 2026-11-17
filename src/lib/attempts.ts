@@ -91,7 +91,7 @@ export function submitModule(attemptId: string, module: ModuleKey) {
   if (module === 'listening' && test.listening) results.listening = scoreObjective(test.listening.sections, a.answers, 'listening', a.variant, a.sections)
   if (module === 'reading' && test.reading) results.reading = scoreObjective(test.reading.sections, a.answers, 'reading', a.variant, a.sections)
   if (module === 'writing') results.writing = { status: 'pending' }
-  if (module === 'speaking') results.speaking = { status: 'pending', metrics: computeMetrics(a.speaking) }
+  if (module === 'speaking') results.speaking = { status: 'pending', metrics: computeMetrics(a.speaking.filter(s => !s.warmup)) }
 
   const nextIndex = a.modules.indexOf(module) + 1
   const done = nextIndex >= a.modules.length
@@ -138,14 +138,15 @@ export async function markWriting(attemptId: string) {
 export async function markSpeaking(attemptId: string) {
   const a = getAttempt(attemptId)
   if (!a || isLive(a.results.speaking)) return
-  const metrics = computeMetrics(a.speaking)
+  const answers = a.speaking.filter(s => !s.warmup) // name/ID questions aren't assessed
+  const metrics = computeMetrics(answers)
   if (a.progress.speaking?.skipped) {
     const error = 'Speaking was ended early (no microphone), so it isn\'t marked. Retake the Speaking test with a working microphone.'
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error } } }))
     return
   }
-  if (!a.speaking.some(s => s.transcript.trim())) {
-    const error = a.speaking.length
+  if (!answers.some(s => s.transcript.trim())) {
+    const error = answers.length
       ? 'No speech was transcribed, so it can\'t be marked. Live transcription needs Chrome or Edge with microphone access — retake the Speaking test there.'
       : 'Speaking was skipped (no microphone), so there is nothing to mark. Retake the Speaking test with a working microphone.'
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error } } }))
@@ -153,7 +154,7 @@ export async function markSpeaking(attemptId: string) {
   }
   patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { ...x.results.speaking, metrics, status: 'marking', heartbeat: Date.now() } } }))
   try {
-    const r = await withHeartbeat(attemptId, 'speaking', () => evaluateSpeaking(a.speaking, metrics))
+    const r = await withHeartbeat(attemptId, 'speaking', () => evaluateSpeaking(answers, metrics))
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'done', metrics, ...r } } }))
   } catch (e) {
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error: (e as Error).message } } }))

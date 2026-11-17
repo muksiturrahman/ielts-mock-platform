@@ -12,13 +12,31 @@ export function ttsSupported() {
   return typeof speechSynthesis !== 'undefined'
 }
 
-/** Stable, distinct voice per speaker name; British voices first (IELTS uses a mix of accents). */
+// macOS novelty voices and the old robotic ones — never use them for an exam.
+const NOVELTY = /bad news|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|fred|junior|ralph|kathy|grandma|grandpa/i
+
+/** Higher = more natural-sounding. Neural/online voices beat local ones; British, then other IELTS accents. */
+function voiceQuality(v: SpeechSynthesisVoice): number {
+  let q = 0
+  if (/natural|neural|premium|enhanced/i.test(v.name)) q += 5
+  if (/online|google/i.test(v.name) || !v.localService) q += 2
+  if (/GB/i.test(v.lang)) q += 3
+  else if (/AU|NZ|IE|CA/i.test(v.lang)) q += 1
+  if (/eddy|flo|reed|rocko|sandy|shelley/i.test(v.name)) q -= 3 // Apple's cartoon-ish multilingual set
+  if (NOVELTY.test(v.name)) q -= 20
+  return q
+}
+
+function rankedVoices(): SpeechSynthesisVoice[] {
+  return englishVoices().filter(v => !NOVELTY.test(v.name)).sort((a, b) => voiceQuality(b) - voiceQuality(a))
+}
+
+/** Stable, distinct voice per speaker; the most natural voices first (IELTS uses a mix of accents). */
 function voiceFor(speaker: string, index: number): SpeechSynthesisVoice | undefined {
-  const all = englishVoices()
-  if (!all.length) return undefined
-  const preferred = [...all].sort((a, b) => Number(/GB|AU/.test(b.lang)) - Number(/GB|AU/.test(a.lang)))
+  const ranked = rankedVoices()
+  if (!ranked.length) return undefined
   const pick = speaker === 'NARRATOR' ? 0 : index + 1
-  return preferred[pick % preferred.length]
+  return ranked[pick % ranked.length]
 }
 
 export interface ScriptLine {
@@ -90,8 +108,15 @@ export async function playScript(
   }
 }
 
+/** The examiner is always the most natural British-leaning voice available. */
 export function examinerVoice(): SpeechSynthesisVoice | undefined {
-  return voiceFor('EXAMINER', 0)
+  return rankedVoices()[0]
+}
+
+/** A human first name for the examiner, taken from the voice when it has one ("Microsoft Libby Online" → Libby). */
+export function examinerName(voice = examinerVoice()): string {
+  const first = voice?.name.replace(/^(microsoft|apple)\s+/i, '').split(/[\s(-]/)[0] ?? ''
+  return /^[A-Z][a-z]{2,}$/.test(first) && !/^(Google|English|British|United|Samantha)$/.test(first) ? first : 'Alex'
 }
 
 // ---------- Speech recognition (live transcript) ----------
@@ -125,6 +150,10 @@ function createRecognition(): Recognition | null {
 // ---------- Recorder: MediaRecorder + level meter + pause detection + recognition ----------
 export interface RecorderHandle {
   stop(): Promise<{ blob: Blob; transcript: string; durationSec: number; pauses: number[] }>
+  /** Has the candidate said anything yet (mic level above the speech threshold)? */
+  hasSpoken(): boolean
+  /** How long the candidate has been silent since they last spoke, in ms (0 while speaking or before speaking). */
+  silentMs(): number
 }
 
 export async function getMicStream(): Promise<MediaStream> {
@@ -191,7 +220,8 @@ export function startRecording(
       }
       callbacks.onTranscript?.(`${finalText}${interim}`.trim())
     }
-    recognition.onerror = () => {}
+    // Permission/device errors won't fix themselves — stop restarting instead of looping.
+    recognition.onerror = e => { if (/not-allowed|service-not-allowed|audio-capture/.test(e.error)) active = false }
     // Chrome ends recognition after silence — restart while recording.
     recognition.onend = () => {
       if (active) try { recognition.start() } catch { /* already started */ }
@@ -200,6 +230,8 @@ export function startRecording(
   }
 
   return {
+    hasSpoken: () => spoke,
+    silentMs: () => (spoke && silentSince !== null ? performance.now() - silentSince : 0),
     stop: () =>
       new Promise(resolve => {
         active = false

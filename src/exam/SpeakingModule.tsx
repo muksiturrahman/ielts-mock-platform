@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Captions, CaptionsOff, Mic, MicOff, Square, Volume2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { putMedia } from '../lib/media'
-import { examinerVoice, getMicStream, recognitionSupported, speak, startRecording, stopSpeaking, watchLevel, type RecorderHandle } from '../lib/speech'
+import { examinerName, examinerVoice, getMicStream, recognitionSupported, speak, startRecording, stopSpeaking, watchLevel, type RecorderHandle } from '../lib/speech'
 import { patchAttempt, useDB } from '../lib/store'
 import type { SpeakingAnswer } from '../lib/types'
 import { fmtClock, TopBar, useNow } from './ExamChrome'
@@ -13,52 +13,83 @@ interface Step {
   question: string
   /** Spoken before the question (transitions between parts) */
   lead?: string
+  /** Short acknowledgement of the previous answer ("Right.") when there's no lead */
+  ack?: string
   limitSec: number
+  /** The examiner moves on after this much silence once the candidate has spoken */
+  silenceSec: number
+  /** …but not before this many seconds (Part 2 must run at least a minute) */
+  minSec?: number
   cue?: boolean
+  /** Name/origin questions at the start — part of the routine, not assessed */
+  warmup?: boolean
 }
 
 const PREP_SEC = 60
+// Real examiners mostly go straight to the next question, sometimes with a short acknowledgement.
+const ACKS = ['', 'Right.', '', 'OK.', 'Thank you.', '', 'I see.']
 
-function buildSteps(sp: NonNullable<ModuleProps['test']['speaking']>, name: string): Step[] {
-  const steps: Step[] = []
+const greeting = () => {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}
+
+/** The official routine: ID check → Part 1 topics → Part 2 long turn → Part 3 discussion. */
+function buildSteps(sp: NonNullable<ModuleProps['test']['speaking']>): Step[] {
+  const steps: Step[] = [
+    { part: 1, warmup: true, limitSec: 15, silenceSec: 1.5, lead: `${greeting()}. My name is {examiner}, and I'll be your examiner today.`, question: 'Can you tell me your full name, please?' },
+    { part: 1, warmup: true, limitSec: 10, silenceSec: 1.5, ack: 'Thank you.', question: 'And what can I call you?' },
+    { part: 1, warmup: true, limitSec: 15, silenceSec: 1.5, question: 'And can you tell me where you\'re from?' },
+  ]
+  let n = 0
   sp.part1.topics.forEach((t, ti) =>
     t.questions.forEach((q, qi) =>
       steps.push({
-        part: 1, question: q, limitSec: 45,
+        part: 1, question: q, limitSec: 40, silenceSec: 2.5, ack: ACKS[n++ % ACKS.length],
         lead: ti === 0 && qi === 0
-          ? `Good morning. My name is Alex and I'll be your examiner today.${name ? '' : ' Could you tell me your full name, please?'} Thank you. In this first part, I'd like to ask you some questions about yourself. Let's talk about ${t.topic.toLowerCase()}.`
-          : qi === 0 ? `Now let's talk about ${t.topic.toLowerCase()}.` : undefined,
+          ? `Thank you. Now, in this first part of the test, I'd like to ask you some questions about yourself. Let's talk about ${t.topic.toLowerCase()}.`
+          : qi === 0 ? `${ti % 2 ? 'Now' : 'Let\'s move on to'} talk about ${t.topic.toLowerCase()}.`.replace('Now talk', 'Now let\'s talk') : undefined,
       }),
     ),
   )
+  const topic = sp.part2.topic.replace(/^Describe/i, 'describe')
   steps.push({
-    part: 2, cue: true, limitSec: 120,
-    question: `${sp.part2.topic}`,
-    lead: "Now, I'm going to give you a topic, and I'd like you to talk about it for one to two minutes. Before you talk, you'll have one minute to think about what you're going to say. You can make some notes if you wish. Here is your topic.",
+    part: 2, cue: true, limitSec: 120, silenceSec: 5, minSec: 60,
+    question: sp.part2.topic,
+    lead: `Now, I'm going to give you a topic, and I'd like you to talk about it for one to two minutes. Before you talk, you'll have one minute to think about what you're going to say. You can make some notes if you wish. Here's some paper and a pencil for making notes, and here's your topic. I'd like you to ${topic}`,
   })
-  sp.part2.roundOff.forEach(q => steps.push({ part: 2, question: q, limitSec: 30 }))
+  sp.part2.roundOff.forEach(q => steps.push({ part: 2, question: q, limitSec: 30, silenceSec: 2.5 }))
   sp.part3.questions.forEach((q, i) =>
     steps.push({
-      part: 3, question: q, limitSec: 75,
-      lead: i === 0 ? `We've been talking about ${sp.part2.topic.replace(/^Describe /i, '').toLowerCase()}. I'd like to discuss with you some more general questions related to this. Let's consider ${sp.part3.theme.toLowerCase()}.` : undefined,
+      part: 3, question: q, limitSec: 75, silenceSec: 3.5, ack: ACKS[(i + 3) % ACKS.length],
+      lead: i === 0 ? `Thank you. We've been talking about ${sp.part2.topic.replace(/^Describe /i, '').toLowerCase()}, and I'd like to discuss with you one or two more general questions related to this. Let's consider, first of all, ${sp.part3.theme.toLowerCase()}.` : undefined,
     }),
   )
   return steps
 }
 
+const pause = (ms: number) => new Promise(r => setTimeout(r, ms))
+
 type Phase = 'check' | 'asking' | 'prep' | 'answering' | 'saving' | 'done'
 
 export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: ModuleProps) {
-  const profile = useDB(d => d.profile)
   const rate = useDB(d => d.settings.ttsRate)
-  const steps = useMemo(() => buildSteps(test.speaking!, profile.name), [test.speaking, profile.name])
+  // Voices load asynchronously, so the examiner's voice (and name) is fixed when the test starts.
+  const [voice, setVoice] = useState<SpeechSynthesisVoice>()
+  const examiner = examinerName(voice)
+  const steps = useMemo(() => buildSteps(test.speaking!), [test.speaking])
+  // Full mock = exam conditions: no question captions, timer or live transcript on screen (toggleable for access).
+  const examMode = attempt.mode === 'full'
+  const [showWords, setShowWords] = useState(!examMode)
+  const [repeated, setRepeated] = useState(false)
+  const pendingAck = useRef('')
   const [index, setIndex] = useState(attempt.speaking.length)
   const [phase, setPhase] = useState<Phase>(attempt.speaking.length >= steps.length ? 'done' : 'check')
   const [stream, setStream] = useState<MediaStream>()
   const [micError, setMicError] = useState('')
   const [level, setLevel] = useState(0)
   const [transcript, setTranscript] = useState('')
-  const [captions, setCaptions] = useState(true)
+  const [captions, setCaptions] = useState(!examMode)
   const [phaseStart, setPhaseStart] = useState(Date.now())
   const [notes, setNotes] = useState(attempt.scratchpad)
   const recRef = useRef<RecorderHandle>(null)
@@ -82,21 +113,31 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     }
   }
 
-  const ask = async (i: number) => {
+  const ask = async (i: number, v = voice) => {
     const s = steps[i]
     if (!s) return finish()
     setIndex(i)
     setTranscript('')
+    setRepeated(false)
     setPhase('asking')
-    const voice = examinerVoice()
-    if (s.lead) await speak(s.lead, { voice, rate })
+    // A cut-off answer gets "Thank you."; otherwise the step's own acknowledgement — never both before a lead.
+    const ack = pendingAck.current || (s.lead ? '' : s.ack ?? '')
+    pendingAck.current = ''
+    if (ack && !s.lead?.startsWith(ack)) { await speak(ack, { voice: v, rate }); await pause(350) }
+    if (s.lead) { await speak(s.lead.replace('{examiner}', examinerName(v)), { voice: v, rate }); await pause(400) }
     if (s.cue) {
       setPhase('prep')
       setPhaseStart(Date.now())
       return
     }
-    await speak(s.question, { voice, rate })
+    await speak(s.question, { voice: v, rate })
     beginAnswer()
+  }
+
+  const start = () => {
+    const v = examinerVoice()
+    setVoice(v)
+    void ask(index, v)
   }
 
   const beginAnswer = () => {
@@ -106,7 +147,19 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     recRef.current = startRecording(stream, { onLevel: setLevel, onTranscript: setTranscript })
   }
 
-  const endAnswer = async () => {
+  /** "Could you repeat the question?" — once per question, before the candidate has started answering. */
+  const repeatQuestion = async () => {
+    const rec = recRef.current
+    if (!rec || repeated) return
+    recRef.current = null
+    setRepeated(true)
+    setPhase('asking')
+    await rec.stop() // discard: it only holds the candidate asking for the repeat
+    await speak(step.question, { voice, rate })
+    beginAnswer()
+  }
+
+  const endAnswer = async (interrupted = false) => {
     const rec = recRef.current
     if (!rec) return
     recRef.current = null
@@ -116,15 +169,17 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     const answer: SpeakingAnswer = {
       part: step.part, question: step.cue ? `${step.question} (${test.speaking!.part2.bullets.join('; ')}; ${test.speaking!.part2.closing})` : step.question,
       transcript: r.transcript, durationSec: r.durationSec, recordingId, pauses: r.pauses, startedAt: phaseStart,
+      ...(step.warmup ? { warmup: true } : {}),
     }
     patchAttempt(attempt.id, a => ({ speaking: [...a.speaking, answer], scratchpad: notes }))
-    if (step.cue) await speak('Thank you.', { voice: examinerVoice(), rate })
+    // Examiners stop a long answer politely; Part 2 always ends with "Thank you."
+    if (interrupted || step.cue) pendingAck.current = 'Thank you.'
     void ask(index + 1)
   }
 
   const finish = () => {
     setPhase('done')
-    speak("Thank you. That is the end of the speaking test.", { voice: examinerVoice(), rate })
+    speak('Thank you. That is the end of the speaking test.', { voice, rate })
   }
 
   // Timers: Part 2 prep (60s) → "please start speaking now"; answer time limits → auto stop.
@@ -132,9 +187,12 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   useEffect(() => {
     if (phase === 'prep' && elapsed >= PREP_SEC) {
       setPhase('asking')
-      void speak('All right? Remember you have one to two minutes for this, so don\'t worry if I stop you. I\'ll tell you when the time is up. Can you start speaking now, please?', { voice: examinerVoice(), rate }).then(beginAnswer)
+      void speak('All right? Remember you have one to two minutes for this, so don\'t worry if I stop you. I\'ll tell you when the time is up. Can you start speaking now, please?', { voice, rate }).then(beginAnswer)
     }
-    if (phase === 'answering' && elapsed >= step.limitSec) void endAnswer()
+    if (phase !== 'answering' || !recRef.current) return
+    if (elapsed >= step.limitSec) return void endAnswer(true)
+    // Turn-taking: when the candidate stops talking, the examiner moves on, as in the real test.
+    if (elapsed >= (step.minSec ?? 3) && recRef.current.silentMs() >= step.silenceSec * 1000) void endAnswer()
   }, [elapsed]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const partTitle = step ? `Part ${step.part}` : 'Complete'
@@ -157,6 +215,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
             <motion.div key="check" className="mx-auto flex max-w-xl flex-col items-center gap-5 p-8 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <h2 className="text-2xl font-bold">Microphone check</h2>
               <p className="opacity-70">Speak normally — the bars should move. Sit in a quiet room and keep the microphone at the same distance throughout.</p>
+              <p className="text-sm opacity-60">Use headphones if you can, so the examiner's voice isn't picked up by your microphone. Like the real test, the examiner moves on when you finish speaking.</p>
               <LevelBars level={level} big />
               {micError && (
                 <div className="space-y-2 text-sm">
@@ -175,7 +234,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
               {!stream ? (
                 <button onClick={enableMic} className="flex items-center gap-2 rounded-md bg-[#1d4ed8] px-5 py-2.5 font-semibold text-white"><Mic size={18} /> Allow microphone</button>
               ) : (
-                <button onClick={() => void ask(index)} className="rounded-md bg-[#1d4ed8] px-6 py-3 font-semibold text-white shadow-lg">{index > 0 ? 'Resume speaking test' : 'Start speaking test'}</button>
+                <button onClick={start} className="rounded-md bg-[#1d4ed8] px-6 py-3 font-semibold text-white shadow-lg">{index > 0 ? 'Resume speaking test' : 'Start speaking test'}</button>
               )}
             </motion.div>
           ) : phase === 'done' ? (
@@ -187,7 +246,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
             </motion.div>
           ) : (
             <motion.div key={`step-${index}`} className="mx-auto grid max-w-5xl gap-6 p-6 md:grid-cols-[280px_1fr] md:p-10" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
-              <Examiner talking={phase === 'asking'} />
+              <Examiner talking={phase === 'asking'} name={examiner} />
               <div className="flex flex-col gap-4">
                 {step.cue && (phase === 'prep' || phase === 'answering' || phase === 'saving') ? (
                   <div className="rounded-lg border-2 p-5 exam-line">
@@ -205,7 +264,6 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
                       </button>
                     </div>
                     <p className="text-lg font-medium">{captions ? step.question : '• • •'}</p>
-                    <button onClick={() => speak(step.question, { voice: examinerVoice(), rate })} className="mt-2 flex items-center gap-1 text-xs opacity-60 hover:opacity-100"><Volume2 size={13} /> Ask again</button>
                   </div>
                 )}
 
@@ -225,14 +283,22 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
                     <div className="mb-3 flex items-center gap-3">
                       <span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-70" /><span className="relative inline-flex h-3 w-3 rounded-full bg-rose-600" /></span>
                       <span className="font-semibold">Recording</span>
-                      <span className="ml-auto font-mono font-bold tabular-nums">{fmtClock(elapsed * 1000)} / {fmtClock(limit * 1000)}</span>
+                      {/* No clock in front of the candidate in the real test; Part 2 shows one so they can pace the long turn. */}
+                      {(!examMode || step.cue) && <span className="ml-auto font-mono font-bold tabular-nums">{fmtClock(elapsed * 1000)} / {fmtClock(limit * 1000)}</span>}
                     </div>
                     <LevelBars level={level} />
-                    <div className="mt-3 min-h-16 rounded-md p-3 text-sm exam-muted">{transcript || <span className="opacity-50">Your words will appear here as you speak…</span>}</div>
+                    {showWords && <div className="mt-3 min-h-16 rounded-md p-3 text-sm exam-muted">{transcript || <span className="opacity-50">Your words will appear here as you speak…</span>}</div>}
                     {step.cue && notes && <details className="mt-2 text-sm"><summary className="cursor-pointer opacity-70">My notes</summary><p className="mt-1 whitespace-pre-line">{notes}</p></details>}
-                    <button disabled={phase === 'saving'} onClick={() => void endAnswer()} className="mt-3 flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                      <Square size={14} /> {phase === 'saving' ? 'Saving…' : 'Finish answer'}
-                    </button>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <button disabled={phase === 'saving'} onClick={() => void endAnswer()} className="flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                        <Square size={14} /> {phase === 'saving' ? 'Saving…' : "I've finished"}
+                      </button>
+                      {phase === 'answering' && !repeated && !step.cue && !recRef.current?.hasSpoken() && (
+                        <button onClick={() => void repeatQuestion()} className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100"><Volume2 size={14} /> Could you repeat the question?</button>
+                      )}
+                      <button onClick={() => setShowWords(w => !w)} className="ml-auto text-xs opacity-60 hover:opacity-100">{showWords ? 'Hide my words' : 'Show my words'}</button>
+                    </div>
+                    {phase === 'answering' && <p className="mt-2 text-xs opacity-50">The examiner moves on when you stop speaking.</p>}
                   </div>
                 )}
                 {phase === 'asking' && <p className="flex items-center gap-2 text-sm opacity-60"><MicOff size={15} /> Listen to the examiner — recording starts automatically.</p>}
@@ -258,18 +324,18 @@ function LevelBars({ level, big }: { level: number; big?: boolean }) {
   )
 }
 
-function Examiner({ talking }: { talking: boolean }) {
+function Examiner({ talking, name }: { talking: boolean; name: string }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border p-6 exam-line">
       <div className="relative">
         {talking && <span className="absolute inset-0 animate-pulse-ring rounded-full bg-blue-500/30" />}
         <motion.div animate={talking ? { scale: [1, 1.04, 1] } : { scale: 1 }} transition={{ duration: 0.8, repeat: talking ? Infinity : 0 }}
           className="relative flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-4xl font-bold text-white shadow-xl">
-          A
+          {name[0]}
         </motion.div>
       </div>
       <div className="text-center">
-        <div className="font-semibold">Alex</div>
+        <div className="font-semibold">{name}</div>
         <div className="text-xs opacity-60">IELTS Examiner (AI)</div>
       </div>
       <div className="text-xs font-semibold uppercase tracking-wide opacity-60">{talking ? 'Speaking…' : 'Listening'}</div>

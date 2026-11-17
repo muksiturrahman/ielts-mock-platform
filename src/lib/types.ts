@@ -195,6 +195,8 @@ export interface SpeakingAnswer {
   /** Seconds of silence > 1s inside the answer, measured from the mic level */
   pauses: number[]
   startedAt: number
+  /** Opening ID/name questions — part of the real routine, not assessed. */
+  warmup?: boolean
 }
 
 export interface SpeakingMetrics {
