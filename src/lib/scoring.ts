@@ -68,6 +68,10 @@ const SPELLING: Record<string, string> = {
   enrolment: 'enrollment', fulfil: 'fulfill', analyse: 'analyze', paralyse: 'paralyze', mould: 'mold', plough: 'plow',
 }
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+const TENS = 'twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety'
+const TENS_VALUE: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 }
+const ONES = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+const MONTH_RE = MONTHS.join('|')
 
 function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
@@ -79,6 +83,10 @@ function normWord(w: string): string {
 
 export function normalizeAnswer(s: string): string {
   let t = s.toLowerCase().trim()
+  // "twenty-five" / "twenty five" → 25
+  t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${ONES.join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ONES.indexOf(b) + 1))
+  // phone / long numbers written in groups: "07962 551 340" → "07962551340"
+  t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   // times: 10am, 10 am, 10.00 am, 10:00am → 10:00 am
   t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/g, (_m, h, mm, ap) => `${Number(h)}:${mm ?? '00'} ${ap[0]}m`)
   // dates: "21st march", "march 21", "21 march" → "21 march"
@@ -91,9 +99,15 @@ export function normalizeAnswer(s: string): string {
   return t.split(' ').map(normWord).join(' ')
 }
 
-/** "(the) library" → ["the library", "library"]; "colour/color" → both. */
+/** "(the) library" → ["the library", "library"]; "colour/color", "bus/coach station" → each alternative. */
 export function expandAccepted(answer: string): string[] {
-  const slashParts = /\s/.test(answer) ? [answer] : answer.split('/') // "colour/color" but not "10 am / 10:00"
+  // " / " separates whole answers ("10 am / 10:00"); "a/b" inside a word swaps just that word. Digit slashes (21/3) stay.
+  const slashParts = answer.split(/\s+\/\s+/).flatMap(part =>
+    part.split(/\s+/).reduce<string[]>((acc, w) => {
+      const alts = /^[a-z()'-]+(\/[a-z()'-]+)+$/i.test(w) ? w.split('/') : [w]
+      return acc.flatMap(a => alts.map(x => (a ? `${a} ${x}` : x)))
+    }, ['']),
+  )
   const out = new Set<string>()
   for (const part of slashParts) {
     const optional = [...part.matchAll(/\(([^)]*)\)/g)]
@@ -107,7 +121,12 @@ export function expandAccepted(answer: string): string[] {
 }
 
 function wordCount(s: string): { words: number; numbers: number } {
-  const parts = s.trim().split(/\s+/).filter(Boolean)
+  // A date ("21 March 2024") or grouped digits ("07962 551 340") count as one number, as in the real test.
+  const t = s.toLowerCase()
+    .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
+    .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
+    .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
+  const parts = t.trim().split(/\s+/).filter(Boolean)
   const numbers = parts.filter(p => /^[£$€]?\d[\d,.:/]*(am|pm)?$/i.test(p)).length
   return { words: parts.length - numbers, numbers }
 }

@@ -76,3 +76,23 @@ describe('section scoring', () => {
     expect(r.items.map(i => i.isCorrect)).toEqual([true, true, true, false])
   })
 })
+
+describe('real-test answer forms', () => {
+  const oneWordAndOrNumber = { maxWords: 1, allowNumber: true }
+  it('phone numbers written in groups', () => {
+    expect(isCompletionCorrect('07962 551 340', ['07962551340'], oneWordAndOrNumber)).toBe(true)
+  })
+  it('a full date counts as one number', () => {
+    expect(isCompletionCorrect('21 March 2024', ['21 March 2024'], { maxWords: 2, allowNumber: true })).toBe(true)
+    expect(isCompletionCorrect('March 21, 2024', ['21 March 2024'], { maxWords: 2, allowNumber: true })).toBe(true)
+  })
+  it('compound number words', () => {
+    expect(isCompletionCorrect('twenty-five', ['25'], oneWordAndOrNumber)).toBe(true)
+    expect(normalizeAnswer('thirty two')).toBe('32')
+  })
+  it('word-level slash alternatives', () => {
+    expect(expandAccepted('bus/coach station')).toEqual(['bus station', 'coach station'])
+    expect(isCompletionCorrect('coach station', ['bus/coach station'])).toBe(true)
+    expect(expandAccepted('10 am / 10:00')).toContain('10:00')
+  })
+})

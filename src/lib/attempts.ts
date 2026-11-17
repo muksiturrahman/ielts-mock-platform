@@ -76,7 +76,8 @@ export function startModule(attemptId: string, module: ModuleKey) {
   patchAttempt(attemptId, x => ({
     progress: {
       ...x.progress,
-      [module]: { ...x.progress[module], startedAt: Date.now(), deadline: x.timed && module !== 'speaking' ? Date.now() + minutes * 60_000 : undefined },
+      // Listening is paced by the recording; its clock is only the checking time at the end.
+      [module]: { ...x.progress[module], startedAt: Date.now(), deadline: x.timed && module !== 'speaking' && module !== 'listening' ? Date.now() + minutes * 60_000 : undefined },
     },
   }))
 }
@@ -108,30 +109,56 @@ export async function markWriting(attemptId: string) {
   const a = getAttempt(attemptId)
   const test = a && getTest(a.testId)
   if (!a || !test?.writing) return
+  const prev = a.results.writing
   patchAttempt(attemptId, x => ({ results: { ...x.results, writing: { ...x.results.writing, status: 'marking' } } }))
-  try {
-    const tasks = test.writing.tasks.filter(t => !a.sections || a.sections.includes(t.number))
-    const evals = await Promise.all(tasks.map(t => evaluateWriting(t, t.number === 1 ? a.writing.task1 : a.writing.task2, a.variant)))
-    const task1 = evals[tasks.findIndex(t => t.number === 1)]
-    const task2 = evals[tasks.findIndex(t => t.number === 2)]
-    patchAttempt(attemptId, x => ({
-      results: { ...x.results, writing: { status: 'done', task1, task2, band: writingBand(task1?.band, task2?.band) } },
-    }))
-  } catch (e) {
-    patchAttempt(attemptId, x => ({ results: { ...x.results, writing: { status: 'error', error: (e as Error).message } } }))
+  const tasks = test.writing.tasks.filter(t => !a.sections || a.sections.includes(t.number))
+  // Mark tasks independently: one failed task keeps the other's result, and a retry only re-marks what's missing.
+  const settled = await Promise.allSettled(tasks.map(t => {
+    const done = t.number === 1 ? prev?.task1 : prev?.task2
+    return done ?? evaluateWriting(t, t.number === 1 ? a.writing.task1 : a.writing.task2, a.variant)
+  }))
+  const get = (n: number) => {
+    const r = settled[tasks.findIndex(t => t.number === n)]
+    return r?.status === 'fulfilled' ? r.value : undefined
   }
+  const task1 = get(1)
+  const task2 = get(2)
+  const failed = settled.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+  patchAttempt(attemptId, x => ({
+    results: {
+      ...x.results,
+      writing: failed
+        ? { status: 'error', task1, task2, error: `${(failed.reason as Error)?.message ?? failed.reason}${task1 || task2 ? ' (the other task was marked — retry to finish).' : ''}` }
+        : { status: 'done', task1, task2, band: writingBand(task1?.band, task2?.band) },
+    },
+  }))
 }
 
 export async function markSpeaking(attemptId: string) {
   const a = getAttempt(attemptId)
   if (!a) return
   const metrics = computeMetrics(a.speaking)
+  if (!a.speaking.some(s => s.transcript.trim())) {
+    const error = 'No speech was transcribed, so it can\'t be marked. Live transcription needs Chrome or Edge with microphone access — retake the Speaking test there.'
+    patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error } } }))
+    return
+  }
   patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { ...x.results.speaking, metrics, status: 'marking' } } }))
   try {
     const r = await evaluateSpeaking(a.speaking, metrics)
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'done', metrics, ...r } } }))
   } catch (e) {
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error: (e as Error).message } } }))
+  }
+}
+
+/** Marking that was running when the tab closed can never finish — show it as failed so it can be retried. */
+export function recoverInterruptedMarking() {
+  for (const a of getDB().attempts) {
+    for (const m of ['writing', 'speaking'] as const) {
+      if (a.results[m]?.status !== 'marking') continue
+      patchAttempt(a.id, x => ({ results: { ...x.results, [m]: { ...x.results[m]!, status: 'error', error: 'Marking was interrupted because the page was closed. Retry to mark it.' } } }))
+    }
   }
 }
 

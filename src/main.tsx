@@ -5,8 +5,10 @@ import './index.css'
 import App from './App'
 import { ensureSeeded } from './data/seed'
 import { applyTheme } from './lib/theme'
+import { recoverInterruptedMarking } from './lib/attempts'
 
 ensureSeeded()
+recoverInterruptedMarking()
 applyTheme() // before first paint, so dark mode doesn't flash white
 
 createRoot(document.getElementById('root')!).render(

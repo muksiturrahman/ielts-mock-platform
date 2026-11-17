@@ -71,13 +71,31 @@ export function RichContent({ text, slot = n => `(${n})` }: { text: string; slot
   return <div>{out}</div>
 }
 
-/** Imported tests can carry SVG — drop scripts, event handlers and javascript: URLs before rendering. */
+// Drawing-only SVG elements; anything else (script, foreignObject, a, image, style, animate/set…) is dropped.
+const SVG_TAGS = new Set([
+  'svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'tspan', 'textpath', 'defs',
+  'marker', 'lineargradient', 'radialgradient', 'stop', 'title', 'desc', 'clippath', 'mask', 'pattern', 'use', 'symbol',
+])
+
+/** Imported tests can carry SVG — parse it and keep only drawing elements and safe attributes (allowlist, not regex). */
 export function sanitizeSvg(svg: string): string {
-  return svg
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/(href|xlink:href)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '')
+  const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
+  const root = doc.documentElement
+  if (root.localName !== 'svg' || doc.getElementsByTagName('parsererror').length) return ''
+  const clean = (el: Element) => {
+    for (const a of [...el.attributes]) {
+      const name = a.name.toLowerCase()
+      const value = a.value.replace(/\s/g, '').toLowerCase()
+      const badLink = (name === 'href' || name.endsWith(':href')) && !value.startsWith('#')
+      if (name.startsWith('on') || badLink || /url\((?!#)|javascript:|expression\(/.test(value)) el.removeAttribute(a.name)
+    }
+    for (const child of [...el.children]) {
+      if (SVG_TAGS.has(child.localName.toLowerCase())) clean(child)
+      else child.remove()
+    }
+  }
+  clean(root)
+  return new XMLSerializer().serializeToString(root)
 }
 
 export function SvgFigure({ svg }: { svg: string }) {

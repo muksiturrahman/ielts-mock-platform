@@ -61,8 +61,8 @@ export default function ReadingModule({ test, attempt, onSubmit, setAnswer, togg
       <QuestionNav parts={parts} current={part} onPart={setPart} onJump={goTo} currentNumber={current} onPrev={() => step(-1)} onNext={() => step(1)}
         action={<>
           {attempt.mode === 'practice' && (
-            <button onClick={() => setReview(r => !r)} className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70">
-              {review ? 'Hide answers' : 'Check answers'}
+            <button onClick={() => setReview(true)} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">
+              {review ? 'Answers shown · locked' : 'Check answers'}
             </button>
           )}
           <SubmitButton unanswered={unanswered} onSubmit={onSubmit} />

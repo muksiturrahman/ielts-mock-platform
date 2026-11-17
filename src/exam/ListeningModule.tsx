@@ -10,6 +10,8 @@ import { QuestionGroupView } from './QuestionGroupView'
 import { SubmitButton } from './SubmitButton'
 
 const CHECK_MS = 2 * 60_000
+/** Before each part the candidate gets time to read its questions, as in the real recording. */
+const PREVIEW_SEC = 30
 
 /** Plays one listening part once: uploaded audio if present, otherwise the script via text-to-speech. */
 async function playPart(section: { transcript: string; audio?: string; context: string }, opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement }) {
@@ -42,14 +44,30 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
   // progress.section = part whose audio is playing; -1 when all audio has finished.
   const [playing, setPlaying] = useState<number | null>(null)
   const [view, setView] = useState(Math.max(0, progress.section))
-  const [checkUntil, setCheckUntil] = useState<number | undefined>(progress.section === -1 ? Date.now() + CHECK_MS : undefined)
+  // Listening has no clock while audio plays; the stored deadline is the end of checking time (refresh-safe).
+  const checkUntil = progress.section === -1 ? progress.deadline : undefined
+  const [previewUntil, setPreviewUntil] = useState<number>()
+  const skipPreview = useRef<() => void>(null)
   const [current, setCurrent] = useState<number>()
   const [review, setReview] = useState(false)
   const now = useNow()
   const abortRef = useRef<AbortController>(null)
 
-  const deadline = Math.min(progress.deadline ?? Infinity, checkUntil ?? Infinity)
-  const remaining = useDeadline(Number.isFinite(deadline) ? deadline : undefined, onSubmit)
+  const remaining = useDeadline(checkUntil, onSubmit)
+
+  const previewTime = async (i: number, signal: AbortSignal) => {
+    const nums = sections[i].groups.flatMap(g => g.questions.map(q => q.number))
+    await speak(`${sections[i].title}. Before you hear the recording, you have ${PREVIEW_SEC} seconds to look at questions ${Math.min(...nums)} to ${Math.max(...nums)}.`, { rate, volume: volumeRef.current })
+    if (signal.aborted) return
+    setPreviewUntil(Date.now() + PREVIEW_SEC * 1000)
+    await new Promise<void>(resolve => {
+      const t = setTimeout(resolve, PREVIEW_SEC * 1000)
+      const done = () => { clearTimeout(t); resolve() }
+      skipPreview.current = done
+      signal.addEventListener('abort', done)
+    })
+    setPreviewUntil(undefined)
+  }
 
   const run = async (from: number) => {
     const ctrl = new AbortController()
@@ -59,14 +77,17 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
       patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i } } }))
       setPlaying(i)
       setView(i)
+      await previewTime(i, ctrl.signal)
+      if (ctrl.signal.aborted) return
       await playPart(sections[i], { rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current! })
       if (i < sections.length - 1 && !ctrl.signal.aborted) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return
     setPlaying(null)
-    patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: -1 } } }))
+    patchAttempt(attempt.id, a => ({
+      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, deadline: a.timed ? Date.now() + CHECK_MS : undefined } },
+    }))
     await speak('That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
-    if (attempt.timed) setCheckUntil(Date.now() + CHECK_MS)
   }
 
   useEffect(() => () => { abortRef.current?.abort(); stopSpeaking() }, [])
@@ -92,8 +113,12 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
         <span className="font-bold">{section.title}</span>
         <span className="text-sm opacity-70">Listen and answer questions {parts[view].numbers[0]?.n}–{parts[view].numbers.at(-1)?.n}.</span>
         <div className="ml-auto flex items-center gap-2 text-sm">
-          {playing !== null && <AudioWave />}
-          {playing !== null && <span className="font-semibold">Playing {sections[playing].title}</span>}
+          {previewUntil ? (
+            <>
+              <span className="font-semibold">Look at the questions · {fmtClock(Math.max(0, previewUntil - now))}</span>
+              {attempt.mode === 'practice' && <button onClick={() => skipPreview.current?.()} className="rounded border px-2 py-0.5 text-xs font-semibold exam-line hover:opacity-70">Skip</button>}
+            </>
+          ) : playing !== null && <><AudioWave /><span className="font-semibold">Playing {sections[playing].title}</span></>}
           {checkUntil && <span className="font-semibold">Checking time · {fmtClock(Math.max(0, checkUntil - now))}</span>}
         </div>
       </div>
@@ -145,7 +170,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
           {attempt.mode === 'practice' && progress.section === -1 && (
             <>
               <button onClick={() => { stopSpeaking(); void run(0) }} className="flex items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70"><RotateCcw size={14} /> Replay</button>
-              <button onClick={() => setReview(r => !r)} className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70">{review ? 'Hide answers' : 'Check answers'}</button>
+              <button onClick={() => setReview(true)} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">{review ? 'Answers shown · locked' : 'Check answers'}</button>
             </>
           )}
           <SubmitButton unanswered={unanswered} onSubmit={() => { abortRef.current?.abort(); stopSpeaking(); onSubmit() }} />

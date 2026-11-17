@@ -48,17 +48,18 @@ function Feedback({ ok, q, given }: { ok: boolean; q: Question; given: string })
   )
 }
 
-function FlagBtn({ id, flags, toggle }: { id: string; flags: string[]; toggle: (id: string) => void }) {
-  const on = flags.includes(id)
+/** ids: the question(s) this button flags — a multi-answer group flags all its numbers together. */
+function FlagBtn({ ids, flags, toggle, className = 'ml-auto' }: { ids: string[]; flags: string[]; toggle: (id: string) => void; className?: string }) {
+  const on = flags.includes(ids[0])
   return (
-    <button type="button" onClick={() => toggle(id)} title={on ? 'Remove review flag' : 'Flag for review'} aria-pressed={on}
-      className={`ml-auto shrink-0 rounded p-1 transition ${on ? 'text-amber-500' : 'opacity-30 hover:opacity-70'}`}>
+    <button type="button" onClick={() => ids.forEach(id => (flags.includes(id) === on) && toggle(id))} title={on ? 'Remove review flag' : 'Flag for review'} aria-pressed={on}
+      className={`${className} shrink-0 rounded p-1 transition ${on ? 'text-amber-500' : 'opacity-30 hover:opacity-70'}`}>
       <Flag size={15} fill={on ? 'currentColor' : 'none'} />
     </button>
   )
 }
 
-function Img({ src }: { src: string }) {
+export function Img({ src }: { src: string }) {
   const [url, setUrl] = useState<string>()
   useEffect(() => { void resolveMediaUrl(src).then(setUrl) }, [src])
   return url ? <img src={url} alt="" className="mx-auto my-3 max-h-96 rounded border exam-line" /> : null
@@ -96,6 +97,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
     return (
       <span className="inline-flex items-center">
         {g.type === 'matching' ? select(q) : text(q)}
+        {!readOnly && <FlagBtn ids={[q.id]} flags={flags} toggle={toggleFlag} className="ml-0.5" />}
         {review && (isRight(g, q, answers) ? <CheckCircle2 size={16} className="text-emerald-500" /> : <span className="text-xs font-semibold text-rose-500">✗ {q.answer[0]}</span>)}
       </span>
     )
@@ -121,7 +123,10 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
             )
           })}
         </div>
-        <div className="mt-1 text-xs opacity-60">Select {max} answers ({chosen.length}/{max})</div>
+        <div className="mt-1 flex items-center text-xs">
+          <span className="opacity-60">Select {max} answers ({chosen.length}/{max})</span>
+          {!readOnly && <FlagBtn ids={g.questions.map(q => q.id)} flags={flags} toggle={toggleFlag} />}
+        </div>
       </div>
     )
   } else if (g.content) {
@@ -155,7 +160,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
                       <span className="font-medium">{q.prompt}</span>
                     )}
                   </div>
-                  <FlagBtn id={q.id} flags={flags} toggle={toggleFlag} />
+                  {!readOnly && <FlagBtn ids={[q.id]} flags={flags} toggle={toggleFlag} />}
                 </div>
                 {(g.type === 'mcq' || g.type === 'tfng' || g.type === 'ynng') && (
                   <div className="ml-8 mt-2 space-y-1.5" role="radiogroup">

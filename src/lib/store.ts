@@ -48,15 +48,26 @@ function migrateSettings(raw: Partial<Settings> & { apiKey?: string; model?: str
   return s
 }
 
+/** True when saved data couldn't be read and couldn't be set aside — writing now would destroy it. */
+let readOnly = false
+
 function load(): DB {
+  let raw: string | null = null
   try {
-    const raw = localStorage.getItem(KEY)
+    raw = localStorage.getItem(KEY)
     if (raw) {
       const db = JSON.parse(raw) as DB
       return { ...db, settings: migrateSettings(db.settings), profile: { ...DEFAULT_PROFILE, ...db.profile } }
     }
   } catch {
-    /* corrupted or blocked storage → start fresh */
+    // Corrupted data: keep a copy before starting fresh, so a bad write never silently wipes history.
+    if (raw) {
+      try {
+        localStorage.setItem(`${KEY}.corrupt-${Date.now()}`, raw)
+      } catch {
+        readOnly = true
+      }
+    }
   }
   return { version: VERSION, tests: [], attempts: [], profile: DEFAULT_PROFILE, settings: DEFAULT_SETTINGS, seeded: [] }
 }
@@ -65,6 +76,10 @@ let db: DB = load()
 const listeners = new Set<() => void>()
 
 function persist() {
+  if (readOnly) {
+    window.dispatchEvent(new CustomEvent('ielts:storage-error'))
+    return
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(db))
   } catch (e) {
@@ -155,6 +170,7 @@ export function importBackup(json: string) {
 }
 
 export function resetAll() {
+  readOnly = false
   localStorage.removeItem(KEY)
   db = load()
   listeners.forEach(l => l())

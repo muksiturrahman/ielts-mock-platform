@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { CheckCircle2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SvgFigure } from '../components/RichContent'
+import { Img } from './QuestionGroupView'
 import { TaskChart } from '../components/TaskChart'
 import { countWords } from '../lib/scoring'
 import { patchAttempt } from '../lib/store'
@@ -75,6 +76,7 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
                 <div className="mt-6">
                   {task.chart && <TaskChart chart={task.chart} />}
                   {task.svg && <SvgFigure svg={task.svg} />}
+                  {task.image && <Img src={task.image} />}
                 </div>
               </div>
             }

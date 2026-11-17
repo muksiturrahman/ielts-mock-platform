@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { ToastProvider, cx } from './components/ui'
+import { Button, ToastProvider, cx, useToast } from './components/ui'
 import { setSettings, useDB } from './lib/store'
 import { applyTheme } from './lib/theme'
 import { PROVIDERS } from './lib/ai'
@@ -97,6 +97,44 @@ function ThemeToggle() {
   )
 }
 
+/** A broken test or result page shows a recovery screen instead of a blank app. */
+class ErrorBoundary extends Component<{ children: ReactNode }, { error?: Error }> {
+  state: { error?: Error } = {}
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div className="mx-auto max-w-lg p-10 text-center">
+        <h1 className="mb-2 font-display text-2xl font-extrabold text-slate-900">Something went wrong on this page</h1>
+        <p className="mb-1 text-sm text-slate-500">Your saved tests and results are safe. This page may contain a malformed test.</p>
+        <p className="mb-6 font-mono text-xs text-rose-500">{this.state.error.message}</p>
+        <div className="flex justify-center gap-2">
+          <Button variant="secondary" onClick={() => { location.hash = '#/'; location.reload() }}>Go to dashboard</Button>
+          <Button onClick={() => location.reload()}>Reload</Button>
+        </div>
+      </div>
+    )
+  }
+}
+
+/** Saving can fail (storage full, private mode) — tell the user instead of losing work silently. */
+function StorageWarning() {
+  const toast = useToast()
+  useEffect(() => {
+    let last = 0
+    const onError = () => {
+      if (Date.now() - last < 10_000) return
+      last = Date.now()
+      toast('Could not save your progress — browser storage is full or blocked. Export a backup in Settings.', 'error')
+    }
+    window.addEventListener('ielts:storage-error', onError)
+    return () => window.removeEventListener('ielts:storage-error', onError)
+  }, [toast])
+  return null
+}
+
 export default function App() {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -107,15 +145,19 @@ export default function App() {
   if (location.pathname.startsWith('/exam/')) {
     return (
       <ToastProvider>
-        <Routes>
-          <Route path="/exam/:attemptId" element={<ExamPage />} />
-        </Routes>
+        <StorageWarning />
+        <ErrorBoundary key={location.pathname}>
+          <Routes>
+            <Route path="/exam/:attemptId" element={<ExamPage />} />
+          </Routes>
+        </ErrorBoundary>
       </ToastProvider>
     )
   }
 
   return (
     <ToastProvider>
+      <StorageWarning />
       <div className="min-h-screen">
         <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-slate-200/70 bg-white/80 backdrop-blur-xl lg:block">
           <Sidebar />
@@ -143,6 +185,7 @@ export default function App() {
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
               className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10"
             >
+              <ErrorBoundary key={location.pathname}>
               <Routes location={location}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/tests" element={<Tests />} />
@@ -155,6 +198,7 @@ export default function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Dashboard />} />
               </Routes>
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>
