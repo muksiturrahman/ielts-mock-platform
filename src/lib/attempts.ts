@@ -2,7 +2,7 @@ import { evaluateSpeaking, evaluateWriting } from './ai'
 import { computeMetrics } from './speech'
 import { criteriaBand, overallBand, scoreObjective, writingBand } from './scoring'
 import { getDB, patchAttempt, saveAttempt, uid } from './store'
-import type { Attempt, ModuleKey, Test } from './types'
+import type { Attempt, ModuleKey, Test, WritingTaskEval } from './types'
 
 /** Official timings in minutes. Listening = 30 + 2 min checking time (computer-delivered). */
 export const MODULE_MINUTES: Record<ModuleKey, number> = { listening: 32, reading: 60, writing: 60, speaking: 14 }
@@ -192,6 +192,21 @@ export function recoverInterruptedMarking() {
   }
 }
 
+type WritingCriteria = Partial<Record<'task' | 'coherence' | 'lexical' | 'grammar', number>>
+
+/** One Writing task's band: examiner criteria override the AI's, and all four criteria are needed. */
+export function writingTaskBand(ai?: WritingTaskEval, override?: WritingCriteria): number | undefined {
+  if (!ai && !override) return undefined
+  const vals = (['task', 'coherence', 'lexical', 'grammar'] as const).map(k => override?.[k] ?? ai?.criteria[k].band)
+  return vals.every(v => typeof v === 'number') ? criteriaBand(vals as number[]) : undefined
+}
+
+/** Writing tasks this attempt included (a Task-1-only practice has just [1]). */
+export function writingTasksTaken(a: Attempt): (1 | 2)[] {
+  const all = getTest(a.testId)?.writing?.tasks.map(t => t.number) ?? [1, 2]
+  return all.filter(n => !a.sections || a.sections.includes(n))
+}
+
 /** Final module bands, with a human examiner's overrides taking precedence over AI marks. */
 export function moduleBands(a: Attempt): Partial<Record<ModuleKey, number>> {
   const out: Partial<Record<ModuleKey, number>> = {}
@@ -199,14 +214,11 @@ export function moduleBands(a: Attempt): Partial<Record<ModuleKey, number>> {
   if (a.results.reading) out.reading = a.results.reading.band
   const w = a.results.writing
   const rw = a.review?.writing
-  const taskBand = (ai: typeof w extends undefined ? never : NonNullable<typeof w>['task1'], ov?: Partial<Record<'task' | 'coherence' | 'lexical' | 'grammar', number>>) => {
-    if (!ai && !ov) return undefined
-    const keys = ['task', 'coherence', 'lexical', 'grammar'] as const
-    const vals = keys.map(k => ov?.[k] ?? ai?.criteria[k].band)
-    return vals.every(v => typeof v === 'number') ? criteriaBand(vals as number[]) : undefined
-  }
-  if (w?.status === 'done' || rw) {
-    const b = writingBand(taskBand(w?.task1, rw?.task1), taskBand(w?.task2, rw?.task2))
+  const t1 = writingTaskBand(w?.task1, rw?.task1)
+  const t2 = writingTaskBand(w?.task2, rw?.task2)
+  // Only a full Writing band: one marked task out of two would overstate it (Task 2 counts double).
+  if (writingTasksTaken(a).every(n => (n === 1 ? t1 : t2) !== undefined)) {
+    const b = writingBand(t1, t2)
     if (b !== undefined) out.writing = b
   }
   const s = a.results.speaking

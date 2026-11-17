@@ -5,7 +5,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ExamReview } from '../components/ExamReview'
 import { questionText, locateQuestion } from '../lib/review'
 import { Badge, BandRing, Button, Card, bandColor, cx, fmtBand, fmtDate } from '../components/ui'
-import { attemptOverall, markSpeaking, markWriting, MODULE_LABEL, moduleBands } from '../lib/attempts'
+import { countWords } from '../lib/scoring'
+import { attemptOverall, markSpeaking, markWriting, MODULE_LABEL, moduleBands, writingTaskBand, writingTasksTaken } from '../lib/attempts'
 import { resolveMediaUrl } from '../lib/media'
 import { useDB } from '../lib/store'
 import type { Annotation, Attempt, ModuleKey, ObjectiveResult, Test, TranscriptNote, WritingTaskEval } from '../lib/types'
@@ -113,12 +114,24 @@ function Overview({ attempt, bands, onOpen }: { attempt: Attempt; bands: Partial
               <TypeBars result={attempt.results[m]!} />
             </>
           )}
-          {m === 'writing' && <MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>
-            {w?.status === 'done' && <CriteriaList items={[...(w.task1 ? [['Task 1', w.task1.band] as const] : []), ...(w.task2 ? [['Task 2', w.task2.band] as const] : [])]} />}
-          </MarkingState>}
-          {m === 'speaking' && <MarkingState status={s?.status} error={s?.error} retry={() => markSpeaking(attempt.id)}>
-            {s?.criteria && <CriteriaList items={[['Fluency & Coherence', s.criteria.fluency.band], ['Lexical Resource', s.criteria.lexical.band], ['Grammar', s.criteria.grammar.band], ['Pronunciation', s.criteria.pronunciation.band]]} />}
-          </MarkingState>}
+          {m === 'writing' && (
+            <>
+              {w?.status !== 'done' && <MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>{null}</MarkingState>}
+              <CriteriaList items={writingTasksTaken(attempt).flatMap(n => {
+                const b = writingTaskBand(n === 1 ? w?.task1 : w?.task2, attempt.review?.writing?.[n === 1 ? 'task1' : 'task2'])
+                return b === undefined ? [] : [[`Task ${n}`, b] as const]
+              })} />
+            </>
+          )}
+          {m === 'speaking' && (
+            <>
+              {s?.status !== 'done' && <MarkingState status={s?.status} error={s?.error} retry={() => markSpeaking(attempt.id)}>{null}</MarkingState>}
+              <CriteriaList items={SPEAKING_CRITERIA.flatMap(([k, label]) => {
+                const b = attempt.review?.speaking?.[k] ?? s?.criteria?.[k].band
+                return b === undefined ? [] : [[label, b] as const]
+              })} />
+            </>
+          )}
           <button onClick={() => onOpen(m)} className="mt-4 text-sm font-semibold text-brand-600 hover:underline">See detailed feedback →</button>
         </Card>
       ))}
@@ -149,7 +162,10 @@ function MarkingState({ status, error, retry, children }: { status?: string; err
   return <>{children}</>
 }
 
+const SPEAKING_CRITERIA = [['fluency', 'Fluency & Coherence'], ['lexical', 'Lexical Resource'], ['grammar', 'Grammatical Range & Accuracy'], ['pronunciation', 'Pronunciation']] as const
+
 function CriteriaList({ items }: { items: readonly (readonly [string, number])[] }) {
+  if (!items.length) return null
   return (
     <div className="space-y-2.5">
       {items.map(([k, v], i) => (
@@ -278,18 +294,19 @@ const TONE: Record<string, string> = {
 
 function WritingView({ attempt, test }: { attempt: Attempt; test?: Test }) {
   const w = attempt.results.writing
-  if (!w || w.status !== 'done') {
-    return <Card className="p-6"><MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>{null}</MarkingState></Card>
-  }
-  const tasks = [w.task1 && ([1, w.task1] as const), w.task2 && ([2, w.task2] as const)].filter(Boolean) as (readonly [1 | 2, WritingTaskEval])[]
+  // A task shows once it has an AI mark or examiner marks — a failed other task doesn't hide it.
+  const tasks = writingTasksTaken(attempt)
+    .map(n => ({ n, ev: n === 1 ? w?.task1 : w?.task2, override: attempt.review?.writing?.[n === 1 ? 'task1' : 'task2'] }))
+    .filter(t => t.ev || t.override)
   return (
     <div className="space-y-6">
-      {tasks.map(([n, ev]) => <WritingTaskCard key={n} n={n} ev={ev} text={n === 1 ? attempt.writing.task1 : attempt.writing.task2} prompt={test?.writing?.tasks.find(t => t.number === n)?.prompt} override={attempt.review?.writing?.[n === 1 ? 'task1' : 'task2']} />)}
+      {w?.status !== 'done' && <Card className="p-6"><MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>{null}</MarkingState></Card>}
+      {tasks.map(({ n, ev, override }) => <WritingTaskCard key={n} n={n} ev={ev} text={n === 1 ? attempt.writing.task1 : attempt.writing.task2} prompt={test?.writing?.tasks.find(t => t.number === n)?.prompt} override={override} />)}
     </div>
   )
 }
 
-function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev: WritingTaskEval; text: string; prompt?: string; override?: Partial<Record<string, number>> }) {
+function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev?: WritingTaskEval; text: string; prompt?: string; override?: Partial<Record<'task' | 'coherence' | 'lexical' | 'grammar', number>> }) {
   const [showModel, setShowModel] = useState(false)
   const crit = [['task', n === 1 ? 'Task Achievement' : 'Task Response'], ['coherence', 'Coherence & Cohesion'], ['lexical', 'Lexical Resource'], ['grammar', 'Grammatical Range & Accuracy']] as const
   return (
@@ -297,24 +314,24 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev: Writ
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="font-display text-xl font-bold">Task {n}</div>
-          <div className="text-sm text-slate-500">{ev.wordCount} words</div>
+          <div className="text-sm text-slate-500">{ev?.wordCount ?? countWords(text)} words{!ev && ' · marked by the examiner'}</div>
         </div>
-        <BandRing band={ev.band} size={80} stroke={7} />
+        <BandRing band={writingTaskBand(ev, override)} size={80} stroke={7} />
       </div>
       {prompt && <details className="mb-5 rounded-xl bg-slate-50 p-4 text-sm"><summary className="cursor-pointer font-semibold">Question</summary><p className="mt-2 whitespace-pre-line text-slate-600">{prompt}</p></details>}
       <div className="grid gap-4 md:grid-cols-2">
         {crit.map(([k, label]) => {
-          const c = ev.criteria[k]
+          const c = ev?.criteria[k]
           const ov = override?.[k]
           return (
             <div key={k} className="rounded-xl border border-slate-100 p-4">
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-sm font-semibold">{label}</span>
-                <span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c.band) }}>
-                  {fmtBand(ov ?? c.band)}{ov !== undefined && ov !== c.band && <span className="ml-1 text-xs font-medium text-slate-400 line-through">{fmtBand(c.band)}</span>}
+                <span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c?.band) }}>
+                  {fmtBand(ov ?? c?.band)}{ov !== undefined && c && ov !== c.band && <span className="ml-1 text-xs font-medium text-slate-400 line-through">{fmtBand(c.band)}</span>}
                 </span>
               </div>
-              <p className="text-sm text-slate-600">{c.comment}</p>
+              {c && <p className="text-sm text-slate-600">{c.comment}</p>}
             </div>
           )
         })}
@@ -322,14 +339,14 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev: Writ
       <div className="mt-6">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold">Your response <span className="font-normal text-slate-400">— hover the underlined text</span></div>
         <div className="rounded-xl border border-slate-100 p-4">
-          <Annotated text={text} notes={ev.annotations.map((a: Annotation) => ({ quote: a.quote, label: a.type, detail: `${a.issue} → ${a.suggestion}`, tone: TONE[a.type] ?? '' }))} />
+          <Annotated text={text} notes={(ev?.annotations ?? []).map((a: Annotation) => ({ quote: a.quote, label: a.type, detail: `${a.issue} → ${a.suggestion}`, tone: TONE[a.type] ?? '' }))} />
         </div>
       </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      {ev && <div className="mt-6 grid gap-4 md:grid-cols-2">
         <List title="Strengths" items={ev.strengths} tone="text-emerald-600" />
         <List title="How to reach the next band" items={ev.improvements} tone="text-brand-600" />
-      </div>
-      <div className="mt-6">
+      </div>}
+      {ev && <div className="mt-6">
         <Button variant="secondary" onClick={() => setShowModel(s => !s)}><Sparkles size={15} /> {showModel ? 'Hide' : 'Show'} Band 8.5+ model answer</Button>
         <AnimatePresence>
           {showModel && (
@@ -338,7 +355,7 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev: Writ
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </div>}
     </Card>
   )
 }
@@ -374,28 +391,30 @@ function SpeakingView({ attempt }: { attempt: Attempt }) {
         </div>
       )}
       <Card className="p-6">
-        <MarkingState status={s?.status} error={s?.error} retry={() => markSpeaking(attempt.id)}>
-          {s?.criteria && (
-            <>
-              <div className="grid gap-4 md:grid-cols-2">
-                {([['fluency', 'Fluency & Coherence'], ['lexical', 'Lexical Resource'], ['grammar', 'Grammatical Range & Accuracy'], ['pronunciation', 'Pronunciation']] as const).map(([k, label]) => {
-                  const ov = attempt.review?.speaking?.[k]
-                  const c = s.criteria![k]
-                  return (
-                    <div key={k} className="rounded-xl border border-slate-100 p-4">
-                      <div className="mb-1 flex items-center justify-between"><span className="text-sm font-semibold">{label}</span><span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c.band) }}>{fmtBand(ov ?? c.band)}</span></div>
-                      <p className="text-sm text-slate-600">{c.comment}</p>
-                    </div>
-                  )
-                })}
-              </div>
+        {s?.status !== 'done' && <MarkingState status={s?.status} error={s?.error} retry={() => markSpeaking(attempt.id)}>{null}</MarkingState>}
+        {/* Examiner marks show even when the AI hasn't marked (no key, or it failed). */}
+        {(s?.criteria || attempt.review?.speaking) && (
+          <>
+            <div className={cx('grid gap-4 md:grid-cols-2', s?.status !== 'done' && 'mt-4')}>
+              {SPEAKING_CRITERIA.map(([k, label]) => {
+                const ov = attempt.review?.speaking?.[k]
+                const c = s?.criteria?.[k]
+                return (
+                  <div key={k} className="rounded-xl border border-slate-100 p-4">
+                    <div className="mb-1 flex items-center justify-between"><span className="text-sm font-semibold">{label}</span><span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c?.band) }}>{fmtBand(ov ?? c?.band)}</span></div>
+                    {c && <p className="text-sm text-slate-600">{c.comment}</p>}
+                  </div>
+                )
+              })}
+            </div>
+            {s?.criteria && (
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <List title="Strengths" items={s.strengths ?? []} tone="text-emerald-600" />
                 <List title="How to reach the next band" items={s.improvements ?? []} tone="text-brand-600" />
               </div>
-            </>
-          )}
-        </MarkingState>
+            )}
+          </>
+        )}
       </Card>
       <Card className="p-6">
         <div className="mb-4 font-display text-lg font-bold">Your answers</div>

@@ -87,16 +87,20 @@ export function weaknesses(attempts: Attempt[]): Weakness[] {
     fluency: 'Fluency & Coherence', 'speaking-lexical': 'Lexical Resource (speaking)', 'speaking-grammar': 'Grammar (speaking)', pronunciation: 'Pronunciation',
   }
   for (const a of attempts) {
-    for (const t of [a.results.writing?.task1, a.results.writing?.task2]) {
-      if (!t) continue
-      for (const [k, v] of Object.entries(t.criteria)) (crit[k] ??= []).push(v.band)
+    // Examiner marks take precedence over the AI's, as in the bands themselves.
+    for (const n of ['task1', 'task2'] as const) {
+      const ai = a.results.writing?.[n]
+      const ov = a.review?.writing?.[n]
+      for (const k of ['task', 'coherence', 'lexical', 'grammar'] as const) {
+        const b = ov?.[k] ?? ai?.criteria[k].band
+        if (b !== undefined) (crit[k] ??= []).push(b)
+      }
     }
     const s = a.results.speaking?.criteria
-    if (s) {
-      ;(crit.fluency ??= []).push(s.fluency.band)
-      ;(crit['speaking-lexical'] ??= []).push(s.lexical.band)
-      ;(crit['speaking-grammar'] ??= []).push(s.grammar.band)
-      ;(crit.pronunciation ??= []).push(s.pronunciation.band)
+    const rs = a.review?.speaking
+    for (const [k, key] of [['fluency', 'fluency'], ['lexical', 'speaking-lexical'], ['grammar', 'speaking-grammar'], ['pronunciation', 'pronunciation']] as const) {
+      const b = rs?.[k] ?? s?.[k].band
+      if (b !== undefined) (crit[key] ??= []).push(b)
     }
   }
   for (const [k, v] of Object.entries(crit)) {

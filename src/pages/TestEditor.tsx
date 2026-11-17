@@ -38,8 +38,18 @@ export default function TestEditor() {
 
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => dirty && e.preventDefault()
+    // In-app links (sidebar, "← Admin") don't fire beforeunload — ask before they discard edits.
+    const leave = (e: MouseEvent) => {
+      const link = (e.target as Element).closest?.('a[href^="#/"]')
+      if (!dirty || !link || link.getAttribute('href') === location.hash) return
+      if (!confirm('You have unsaved changes to this test. Leave without saving?')) { e.preventDefault(); e.stopPropagation() }
+    }
     window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
+    document.addEventListener('click', leave, true)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      document.removeEventListener('click', leave, true)
+    }
   }, [dirty])
 
   const { blocking, warnings } = useMemo(() => (test ? testIssues(test) : { blocking: [], warnings: [] }), [test])
