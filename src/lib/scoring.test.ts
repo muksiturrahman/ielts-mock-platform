@@ -93,14 +93,14 @@ describe('real-test answer forms', () => {
   it('word-level slash alternatives', () => {
     expect(expandAccepted('bus/coach station')).toEqual(['bus station', 'coach station'])
     expect(isCompletionCorrect('coach station', ['bus/coach station'])).toBe(true)
-    expect(expandAccepted('10 am / 10:00')).toContain('10:00')
+    expect(expandAccepted('10 am / 10:00')).toContain('10.00')
   })
 })
 
 describe('audit round 2 answer forms', () => {
   it('am/pm only as a whole word', () => {
     expect(isCompletionCorrect('two ambulances', ['2 ambulances'])).toBe(true)
-    expect(normalizeAnswer('10am')).toBe('10:00 am')
+    expect(normalizeAnswer('10am')).toBe('10.00 am')
   })
   it('millions with several commas', () => {
     expect(isCompletionCorrect('3,000,000', ['3000000'])).toBe(true)
@@ -120,5 +120,17 @@ describe('audit round 2 answer forms', () => {
   it('prices keep working', () => {
     expect(isCompletionCorrect('£4.50', ['4.50'])).toBe(true)
     expect(isCompletionCorrect('£45.00', ['45.00'])).toBe(true)
+  })
+})
+
+describe('audit round 2 re-check', () => {
+  it('number words count as one number for the word limit', () => {
+    expect(isCompletionCorrect('one hundred', ['100'], { maxWords: 1, allowNumber: true })).toBe(true)
+    expect(isCompletionCorrect('a hundred and fifty', ['150'])).toBe(true)
+  })
+  it('decimals with units and leading-zero times', () => {
+    expect(isCompletionCorrect('3.50km', ['3.50 km'])).toBe(true)
+    expect(isCompletionCorrect('09.30', ['9:30'])).toBe(true)
+    expect(isCompletionCorrect('£3.50', ['3.50'])).toBe(true)
   })
 })

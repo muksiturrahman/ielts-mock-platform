@@ -9,6 +9,7 @@ import { recoverInterruptedMarking } from './lib/attempts'
 
 ensureSeeded()
 recoverInterruptedMarking()
+setInterval(recoverInterruptedMarking, 30_000) // marking whose tab died while this one stays open
 applyTheme() // before first paint, so dark mode doesn't flash white
 
 createRoot(document.getElementById('root')!).render(

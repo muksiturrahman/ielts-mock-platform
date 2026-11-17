@@ -37,15 +37,17 @@ export function parseScript(transcript: string): ScriptLine[] {
     })
 }
 
-export function speak(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: number; volume?: number } = {}): Promise<void> {
-  if (!ttsSupported()) return Promise.resolve()
+let generation = 0 // bumped by stopSpeaking so a multi-sentence speak() stops too
+
+function speakOne(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: number; volume?: number }): Promise<void> {
   return new Promise(resolve => {
     const u = new SpeechSynthesisUtterance(text)
     if (opts.voice) u.voice = opts.voice
     u.rate = opts.rate ?? 0.95
     u.volume = opts.volume ?? 1
-    // Chrome sometimes drops long utterances without firing onend — never let the test hang on it.
-    const watchdog = setTimeout(() => resolve(), (text.length * 90) / u.rate + 3000)
+    // Chrome sometimes drops an utterance without firing onend and then stays "speaking", so later lines
+    // queue behind it in silence. After a generous limit, clear the queue and move on.
+    const watchdog = setTimeout(() => { speechSynthesis.cancel(); resolve() }, (text.length * 90) / u.rate + 3000)
     const done = () => { clearTimeout(watchdog); resolve() }
     u.onend = done
     u.onerror = done
@@ -53,7 +55,23 @@ export function speak(text: string, opts: { voice?: SpeechSynthesisVoice; rate?:
   })
 }
 
+/** Speaks text sentence by sentence: Chrome's online voices cut off any single utterance after ~15 s. */
+export async function speak(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: number; volume?: number } = {}): Promise<void> {
+  if (!ttsSupported()) return
+  const gen = generation
+  const chunks = (text.match(/[^.!?]+[.!?]*["')\]]*\s*/g) ?? [text]).reduce<string[]>((acc, c) => {
+    if (acc.length && (acc[acc.length - 1] + c).length < 160) acc[acc.length - 1] += c
+    else acc.push(c)
+    return acc
+  }, [])
+  for (const c of chunks) {
+    if (gen !== generation) return
+    if (c.trim()) await speakOne(c.trim(), opts)
+  }
+}
+
 export function stopSpeaking() {
+  generation++
   if (ttsSupported()) speechSynthesis.cancel()
 }
 

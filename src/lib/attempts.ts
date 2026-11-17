@@ -139,6 +139,11 @@ export async function markSpeaking(attemptId: string) {
   const a = getAttempt(attemptId)
   if (!a || isLive(a.results.speaking)) return
   const metrics = computeMetrics(a.speaking)
+  if (a.progress.speaking?.skipped) {
+    const error = 'Speaking was ended early (no microphone), so it isn\'t marked. Retake the Speaking test with a working microphone.'
+    patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error } } }))
+    return
+  }
   if (!a.speaking.some(s => s.transcript.trim())) {
     const error = a.speaking.length
       ? 'No speech was transcribed, so it can\'t be marked. Live transcription needs Chrome or Edge with microphone access — retake the Speaking test there.'
@@ -158,15 +163,21 @@ export async function markSpeaking(attemptId: string) {
 // ---------- marking liveness ----------
 // The tab that is marking refreshes a heartbeat; marking with a stale heartbeat was cut off (tab closed).
 const HEARTBEAT_MS = 15_000
-const isLive = (r?: { status: string; heartbeat?: number }) => r?.status === 'marking' && Date.now() - (r.heartbeat ?? 0) < HEARTBEAT_MS * 3
+// Chrome runs timers in long-hidden tabs only once a minute, so allow well over 60s between beats.
+const isLive = (r?: { status: string; heartbeat?: number }) => r?.status === 'marking' && Date.now() - (r.heartbeat ?? 0) < HEARTBEAT_MS * 6
+const INTERRUPTED = 'Marking was interrupted because the page was closed or reloaded. Retry to mark it.'
 
 async function withHeartbeat<T>(attemptId: string, m: 'writing' | 'speaking', fn: () => Promise<T>): Promise<T> {
   const beat = () => patchAttempt(attemptId, x => (x.results[m] ? { results: { ...x.results, [m]: { ...x.results[m], heartbeat: Date.now() } } } : {}))
+  // Reload/close kills the request: record that at once so Retry shows straight away (crashes fall back to the heartbeat).
+  const onHide = () => patchAttempt(attemptId, x => (x.results[m]?.status === 'marking' ? { results: { ...x.results, [m]: { ...x.results[m], status: 'error', error: INTERRUPTED } } } : {}))
   const timer = setInterval(beat, HEARTBEAT_MS)
+  window.addEventListener('pagehide', onHide)
   try {
     return await fn()
   } finally {
     clearInterval(timer)
+    window.removeEventListener('pagehide', onHide)
   }
 }
 
@@ -175,7 +186,7 @@ export function recoverInterruptedMarking() {
   for (const a of getDB().attempts) {
     for (const m of ['writing', 'speaking'] as const) {
       if (a.results[m]?.status !== 'marking' || isLive(a.results[m])) continue
-      patchAttempt(a.id, x => ({ results: { ...x.results, [m]: { ...x.results[m]!, status: 'error', error: 'Marking was interrupted because the page was closed. Retry to mark it.' } } }))
+      patchAttempt(a.id, x => ({ results: { ...x.results, [m]: { ...x.results[m]!, status: 'error', error: INTERRUPTED } } }))
     }
   }
 }

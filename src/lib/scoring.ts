@@ -81,15 +81,17 @@ function normWord(w: string): string {
   return w
 }
 
-export function normalizeAnswer(s: string): string {
-  let t = s.toLowerCase().trim().replace(/&/g, ' and ')
-  // "twenty-five" / "twenty five" → 25; "one hundred" / "a hundred" / "3 hundred" → 100 / 300
+/** Number words → digits: "twenty-five" → 25, "a hundred and fifty" → 150, "one" → 1. */
+function numberWords(t: string): string {
   t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${ONES.join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ONES.indexOf(b) + 1))
-  t = t.replace(new RegExp(`\\b(a|${ONES.join('|')}|\\d)\\s+hundred\\b`, 'g'), (_m, n) => String((n === 'a' ? 1 : /\d/.test(n) ? Number(n) : ONES.indexOf(n) + 1) * 100))
-  // times: 10am, 10 am, 10.00 am, 10:00am → 10:00 am (but not "2 ambulances")
+  t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? w)
+  return t.replace(/\b(a|\d{1,2})\s+100(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
+}
+
+export function normalizeAnswer(s: string): string {
+  let t = numberWords(s.toLowerCase().trim().replace(/&/g, ' and '))
+  // times: 10am, 10 am, 10.00 am, 10:00am → 10.00 am (but not "2 ambulances")
   t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (_m, h, mm, ap) => `${Number(h)}:${mm ?? '00'} ${ap[0]}m`)
-  // 24-hour style "10.30" → "10:30"
-  t = t.replace(/\b([01]?\d|2[0-3])\.([0-5]\d)\b(?!\.\d)/g, '$1:$2')
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
   t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(\\d{1,2})\\b`, 'g'), '$2 $1')
@@ -98,6 +100,8 @@ export function normalizeAnswer(s: string): string {
   t = t.replace(/[£$€]/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
   // units: "100km" → "100 km"
   t = t.replace(/(\d)([a-z]{2,})\b/g, '$1 $2')
+  // "10:30" and "10.30" (times) or "3.50" (prices) all written one way, so either style matches; "09.30" = "9.30"
+  t = t.replace(/(\d):(\d{2})\b/g, '$1.$2').replace(/\b0(\d)\.(\d{2})\b/g, '$1.$2')
   t = t.replace(/[“”"'‘’`]/g, '').replace(/[.,;!?]+$/g, '').replace(/[.,;!?](\s|$)/g, '$1')
   t = t.replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
   return t.split(' ').map(normWord).join(' ')
@@ -126,7 +130,7 @@ export function expandAccepted(answer: string): string[] {
 
 function wordCount(s: string): { words: number; numbers: number } {
   // A date ("21 March 2024") or grouped digits ("07962 551 340") count as one number, as in the real test.
-  const t = s.toLowerCase()
+  const t = numberWords(s.toLowerCase())
     .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')

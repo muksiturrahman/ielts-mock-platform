@@ -21,7 +21,8 @@ function groupIssues(g: QuestionGroup, where: string): string[] {
     out.push(`${where} Q${nums[0]}: ${g.type.toUpperCase()} groups can't have Content — it hides the answer options`)
   }
   if (g.content && (g.type === 'completion' || g.type === 'matching')) {
-    const noSlot = nums.filter(n => !slots.includes(n) && !g.questions.find(q => q.number === n)?.prompt.includes(`{{${n}}}`))
+    // With content, only the content is shown — gaps in question prompts never appear.
+    const noSlot = nums.filter(n => !slots.includes(n))
     if (noSlot.length) out.push(`${where}: Q${noSlot.join(', Q')} ${noSlot.length > 1 ? 'have' : 'has'} no {{n}} gap in the content, so ${noSlot.length > 1 ? 'they' : 'it'} can't be answered`)
     const orphan = slots.filter(n => !nums.includes(n))
     if (orphan.length) out.push(`${where}: gap {{${orphan.join('}}, {{')}}} has no matching question`)
@@ -54,9 +55,10 @@ export function testIssues(t: Test): TestIssues {
     const nums = secs.flatMap(s => s.groups.flatMap(g => g.questions.map(q => q.number)))
     const dup = nums.filter((n, i) => nums.indexOf(n) !== i)
     if (dup.length) blocking.push(`${m}: duplicate question numbers ${[...new Set(dup)].join(', ')}`)
-    const max = Math.max(0, ...nums)
-    const missing = Array.from({ length: max }, (_, i) => i + 1).filter(n => !nums.includes(n))
-    if (missing.length) blocking.push(`${m}: missing question numbers ${missing.join(', ')}`)
+    // Practice packs may start at Q14; only gaps inside the range are worth a look (scoring still works).
+    const min = Math.min(...nums)
+    const missing = nums.length ? Array.from({ length: Math.max(...nums) - min + 1 }, (_, i) => i + min).filter(n => !nums.includes(n)) : []
+    if (missing.length) warnings.push(`${m}: missing question numbers ${missing.join(', ')}`)
     if (nums.length && nums.length !== 40) warnings.push(`${m}: ${nums.length} questions (a full test has 40)`)
   }
   const taskNums = (t.writing?.tasks ?? []).map(w => w.number)

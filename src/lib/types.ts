@@ -243,6 +243,8 @@ export interface ModuleProgress {
   section: number
   /** Practice: answers were revealed, so they stay locked (survives refresh). */
   revealed?: boolean
+  /** Speaking ended early because the microphone failed — not marked. */
+  skipped?: boolean
 }
 
 export interface Attempt {

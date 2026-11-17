@@ -36,4 +36,9 @@ describe('testIssues', () => {
     expect(testIssues(base(sec({ id: 'g', type: 'tfng', instructions: '', questions: [{ id: 'q', number: 1, prompt: 'p', answer: ['T'] }] }))).blocking.join()).toContain("isn't one of the options")
     expect(testIssues(base(sec({ id: 'g', type: 'mcq_multi', instructions: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }], questions: [{ id: 'q1', number: 1, prompt: '', answer: ['B'] }, { id: 'q2', number: 2, prompt: '', answer: ['B'] }] }))).blocking.join()).toContain('different answer letter')
   })
+  it('allows a practice pack numbered from 14 and blocks prompt-only gaps under content', () => {
+    const q = (n: number) => ({ id: `q${n}`, number: n, prompt: '', answer: ['TRUE'] })
+    expect(testIssues(base(sec({ id: 'g', type: 'tfng', instructions: '', questions: [q(14), q(15)] }))).blocking).toEqual([])
+    expect(testIssues(base(sec({ id: 'g', type: 'completion', instructions: '', content: 'Notes', questions: [{ id: 'q', number: 1, prompt: 'The {{1}} is open', answer: ['x'] }] }))).blocking.join()).toContain('no {{n}} gap')
+  })
 })

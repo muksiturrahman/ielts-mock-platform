@@ -162,7 +162,11 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
                 <div className="space-y-2 text-sm">
                   <p className="text-rose-600">{micError}</p>
                   {/* Without a mic the module can't be done — let the candidate finish the rest of the test. */}
-                  <button onClick={() => { if (confirm('Skip the Speaking test? It will have no score, so this attempt won\'t get an overall band.')) onSubmit() }} className="underline opacity-70 hover:opacity-100">
+                  <button onClick={() => {
+                    if (!confirm('Skip the Speaking test? It will have no score, so this attempt won\'t get an overall band.')) return
+                    patchAttempt(attempt.id, a => ({ progress: { ...a.progress, speaking: { ...a.progress.speaking, skipped: true } } }))
+                    onSubmit()
+                  }} className="underline opacity-70 hover:opacity-100">
                     Skip Speaking and finish the test
                   </button>
                 </div>

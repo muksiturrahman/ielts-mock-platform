@@ -14,28 +14,44 @@ const CHECK_MS = 2 * 60_000
 /** Before each part the candidate gets time to read its questions, as in the real recording. */
 const PREVIEW_SEC = 30
 
-/** Plays one listening part once: uploaded audio if present, otherwise the script via text-to-speech. */
-async function playPart(section: { transcript: string; audio?: string; context: string }, opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement; onAudioError?: () => void }) {
-  const url = await resolveMediaUrl(section.audio).catch(() => undefined)
+/** No progress for this long while "playing" = stalled network/decoder: give up on the file. */
+const STALL_MS = 20_000
+
+/**
+ * Plays one listening part once: uploaded audio if it plays, otherwise the script via text-to-speech.
+ * `preview` (the 30 s question time) runs only for the script — real recordings include their own pauses.
+ */
+async function playPart(
+  section: { transcript: string; audio?: string; context: string },
+  opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement; onAudioError: () => void; preview: () => Promise<void> },
+) {
+  const url = section.audio ? await resolveMediaUrl(section.audio).catch(() => undefined) : undefined
   if (url) {
     const el = opts.audioEl
+    let stallTimer: ReturnType<typeof setInterval> | undefined
     try {
       el.src = url
       el.volume = opts.getVolume()
       await new Promise<void>((resolve, reject) => {
+        let last = Date.now()
+        el.ontimeupdate = () => { last = Date.now() }
         el.onended = () => resolve()
         el.onerror = () => reject(el.error)
         opts.signal.addEventListener('abort', () => { el.pause(); resolve() })
+        stallTimer = setInterval(() => { if (Date.now() - last > STALL_MS) reject(new Error('stalled')) }, 2000)
         el.play().catch(reject) // corrupt file, or the browser blocked playback (iOS)
       })
       return
     } catch {
       el.pause()
       if (opts.signal.aborted) return
-      opts.onAudioError?.()
-      // fall through: read the script aloud so the test can continue
+    } finally {
+      clearInterval(stallTimer)
     }
   }
+  if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
+  await opts.preview()
+  if (opts.signal.aborted) return
   await playScript(parseScript(section.transcript), opts)
 }
 
@@ -87,11 +103,16 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
       patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i } } }))
       setPlaying(i)
       setView(i)
-      // An uploaded recording carries its own "you have some time to look at…" pauses.
-      if (!sections[i].audio) await previewTime(i, ctrl.signal)
-      if (ctrl.signal.aborted) return
-      await playPart(sections[i], { rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current!,
-        onAudioError: () => toast(`The audio for ${sections[i].title} couldn't play, so the recording script is being read aloud instead.`, 'error') })
+      await playPart(sections[i], {
+        rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current!,
+        preview: () => previewTime(i, ctrl.signal),
+        onAudioError: () => toast(
+          sections[i].transcript.trim()
+            ? `The audio for ${sections[i].title} couldn't play, so the recording script is being read aloud instead.`
+            : `The audio for ${sections[i].title} couldn't play and this part has no script. Ask your teacher to re-upload it.`,
+          'error',
+        ),
+      })
       if (i < sections.length - 1 && !ctrl.signal.aborted) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return
