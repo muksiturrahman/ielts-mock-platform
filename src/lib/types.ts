@@ -259,6 +259,8 @@ export interface Attempt {
   modules: ModuleKey[]
   /** Practice: only these section indexes (reading/listening) or task numbers (writing) */
   sections?: number[]
+  /** Writing task numbers set when the attempt started (later test edits don't change them) */
+  writingTasks?: (1 | 2)[]
   moduleIndex: number
   progress: Record<string, ModuleProgress>
   status: 'in_progress' | 'completed'

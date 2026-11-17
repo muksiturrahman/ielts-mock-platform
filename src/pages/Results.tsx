@@ -115,22 +115,22 @@ function Overview({ attempt, bands, onOpen }: { attempt: Attempt; bands: Partial
             </>
           )}
           {m === 'writing' && (
-            <>
+            <div className="space-y-3">
               {w?.status !== 'done' && <MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>{null}</MarkingState>}
               <CriteriaList items={writingTasksTaken(attempt).flatMap(n => {
                 const b = writingTaskBand(n === 1 ? w?.task1 : w?.task2, attempt.review?.writing?.[n === 1 ? 'task1' : 'task2'])
                 return b === undefined ? [] : [[`Task ${n}`, b] as const]
               })} />
-            </>
+            </div>
           )}
           {m === 'speaking' && (
-            <>
+            <div className="space-y-3">
               {s?.status !== 'done' && <MarkingState status={s?.status} error={s?.error} retry={() => markSpeaking(attempt.id)}>{null}</MarkingState>}
               <CriteriaList items={SPEAKING_CRITERIA.flatMap(([k, label]) => {
                 const b = attempt.review?.speaking?.[k] ?? s?.criteria?.[k].band
                 return b === undefined ? [] : [[label, b] as const]
               })} />
-            </>
+            </div>
           )}
           <button onClick={() => onOpen(m)} className="mt-4 text-sm font-semibold text-brand-600 hover:underline">See detailed feedback →</button>
         </Card>

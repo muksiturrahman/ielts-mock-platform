@@ -39,18 +39,27 @@ export default function TestEditor() {
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => dirty && e.preventDefault()
     // In-app links (sidebar, "← Admin") don't fire beforeunload — ask before they discard edits.
+    const ask = () => confirm('You have unsaved changes to this test. Leave without saving?')
     const leave = (e: MouseEvent) => {
       const link = (e.target as Element).closest?.('a[href^="#/"]')
       if (!dirty || !link || link.getAttribute('href') === location.hash) return
-      if (!confirm('You have unsaved changes to this test. Leave without saving?')) { e.preventDefault(); e.stopPropagation() }
+      // New-tab opens (modifier/middle click, target=_blank) don't leave this page.
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || link.getAttribute('target') === '_blank') return
+      if (!ask()) { e.preventDefault(); e.stopPropagation() }
     }
+    // Browser Back/Forward: the router has already moved, so on cancel navigate straight back
+    // in the same tick — React batches both updates and the editor never unmounts.
+    const here = location.hash.slice(1)
+    const back = () => { if (dirty && location.hash.slice(1) !== here && !ask()) navigate(here) }
     window.addEventListener('beforeunload', warn)
+    window.addEventListener('popstate', back)
     document.addEventListener('click', leave, true)
     return () => {
       window.removeEventListener('beforeunload', warn)
+      window.removeEventListener('popstate', back)
       document.removeEventListener('click', leave, true)
     }
-  }, [dirty])
+  }, [dirty, navigate])
 
   const { blocking, warnings } = useMemo(() => (test ? testIssues(test) : { blocking: [], warnings: [] }), [test])
   const issues = [...blocking, ...warnings]

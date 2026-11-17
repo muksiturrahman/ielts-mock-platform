@@ -42,6 +42,9 @@ export function createAttempt(test: Test, opts: { mode: 'full' | 'practice'; mod
     timed: opts.timed,
     modules: opts.modules,
     sections: opts.sections,
+    writingTasks: opts.modules.includes('writing')
+      ? (test.writing?.tasks ?? []).map(t => t.number).filter(n => !opts.sections || opts.sections.includes(n))
+      : undefined,
     moduleIndex: 0,
     progress: Object.fromEntries(opts.modules.map(m => [m, { module: m, section: 0 }])),
     status: 'in_progress',
@@ -203,8 +206,12 @@ export function writingTaskBand(ai?: WritingTaskEval, override?: WritingCriteria
 
 /** Writing tasks this attempt included (a Task-1-only practice has just [1]). */
 export function writingTasksTaken(a: Attempt): (1 | 2)[] {
-  const all = getTest(a.testId)?.writing?.tasks.map(t => t.number) ?? [1, 2]
-  return all.filter(n => !a.sections || a.sections.includes(n))
+  if (a.writingTasks) return a.writingTasks
+  // Older attempts: the tasks the candidate actually has a response or marks for.
+  return ([1, 2] as const).filter(n => {
+    const k = n === 1 ? 'task1' : 'task2'
+    return (!a.sections || a.sections.includes(n)) && !!(a.writing[k].trim() || a.results.writing?.[k] || a.review?.writing?.[k])
+  })
 }
 
 /** Final module bands, with a human examiner's overrides taking precedence over AI marks. */
@@ -217,7 +224,7 @@ export function moduleBands(a: Attempt): Partial<Record<ModuleKey, number>> {
   const t1 = writingTaskBand(w?.task1, rw?.task1)
   const t2 = writingTaskBand(w?.task2, rw?.task2)
   // Only a full Writing band: one marked task out of two would overstate it (Task 2 counts double).
-  if (writingTasksTaken(a).every(n => (n === 1 ? t1 : t2) !== undefined)) {
+  if ((w || rw) && writingTasksTaken(a).every(n => (n === 1 ? t1 : t2) !== undefined)) {
     const b = writingBand(t1, t2)
     if (b !== undefined) out.writing = b
   }

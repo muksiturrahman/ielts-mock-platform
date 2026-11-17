@@ -3,7 +3,7 @@ import { ClipboardCheck, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, Button, Card, Empty, PageHeader, bandColor, cx, fmtBand, fmtDate, useToast } from '../components/ui'
-import { moduleBands } from '../lib/attempts'
+import { moduleBands, writingTaskBand } from '../lib/attempts'
 import { countWords } from '../lib/scoring'
 import { patchAttempt, useDB } from '../lib/store'
 import type { Attempt, ExaminerReview } from '../lib/types'
@@ -102,6 +102,7 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
                 </label>
               ))}
             </div>
+            {review.writing?.[t] && writingTaskBand(ev, review.writing[t]) === undefined && <Incomplete />}
           </Card>
         )
       })}
@@ -122,6 +123,7 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
               </label>
             ))}
           </div>
+          {review.speaking && S_CRIT.some(([k]) => (review.speaking?.[k] ?? s.criteria?.[k].band) === undefined) && <Incomplete />}
         </Card>
       )}
 
@@ -136,3 +138,7 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
     </motion.div>
   )
 }
+
+const Incomplete = () => (
+  <p className="mt-3 text-sm text-amber-600">There's no AI mark to fall back on — set all 4 criteria to give a band.</p>
+)
