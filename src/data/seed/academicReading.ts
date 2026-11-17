@@ -151,7 +151,7 @@ G| Raising the hull presented problems of its own. Because waterlogged wood shri
             id: 'ar-q13',
             number: 13,
             prompt: '',
-            answer: ['freeze-dried', 'freeze dried'],
+            answer: ['freeze-dried'], // "freeze dried" is two words — over the ONE WORD limit
             explanation:
               'Paragraph G: "the timbers will be freeze-dried to remove any remaining moisture." Only then can the ship be reassembled.',
           },

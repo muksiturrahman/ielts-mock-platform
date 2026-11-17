@@ -68,6 +68,7 @@ export function Img({ src }: { src: string }) {
 }
 
 export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleFlag, onFocusQuestion, review, readOnly, marks }: GroupProps) {
+  if (!g.questions.length) return null // the editor blocks publishing these; don't crash on old data
   const byNumber = new Map(g.questions.map(q => [q.number, q]))
   const keyOf = (q: Question) => marks?.[q.id]?.accepted ?? q.answer
   const right = (q: Question) => marks?.[q.id]?.isCorrect ?? isRight(g, q, answers)

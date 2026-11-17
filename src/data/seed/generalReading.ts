@@ -141,7 +141,7 @@ Choose NO MORE THAN THREE WORDS AND/OR A NUMBER from the text for each answer.`,
 ## Sickness
 - Absences of over seven days require a {{21}} from a doctor.`,
         questions: [
-          { id: 'gr-q15', number: 15, prompt: '', answer: ['1 April', '1st April', 'April 1', 'April 1st', 'first April', 'the first of April'], explanation: '"The leave year runs from 1 April to 31 March."' },
+          { id: 'gr-q15', number: 15, prompt: '', answer: ['1 April', '1st April', 'April 1', 'April 1st', 'first April', 'first of April', '1st of April'], explanation: '"The leave year runs from 1 April to 31 March."' },
           { id: 'gr-q16', number: 16, prompt: '', answer: ['pro rata', 'pro-rata'], explanation: '"Part-time employees receive leave on a pro rata basis."' },
           { id: 'gr-q17', number: 17, prompt: '', answer: ['online HR portal', 'HR portal'], explanation: '"All requests for leave must be submitted through the online HR portal."' },
           { id: 'gr-q18', number: 18, prompt: '', answer: ['department manager'], explanation: '"the request must be approved by the department manager rather than the employee\'s immediate supervisor."' },

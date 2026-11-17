@@ -158,7 +158,15 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
               <h2 className="text-2xl font-bold">Microphone check</h2>
               <p className="opacity-70">Speak normally — the bars should move. Sit in a quiet room and keep the microphone at the same distance throughout.</p>
               <LevelBars level={level} big />
-              {micError && <p className="text-sm text-rose-600">{micError}</p>}
+              {micError && (
+                <div className="space-y-2 text-sm">
+                  <p className="text-rose-600">{micError}</p>
+                  {/* Without a mic the module can't be done — let the candidate finish the rest of the test. */}
+                  <button onClick={() => { if (confirm('Skip the Speaking test? It will have no score, so this attempt won\'t get an overall band.')) onSubmit() }} className="underline opacity-70 hover:opacity-100">
+                    Skip Speaking and finish the test
+                  </button>
+                </div>
+              )}
               {!recognitionSupported() && <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">Live transcription isn't available in this browser, so AI feedback will be limited. Chrome or Edge is recommended.</p>}
               {!stream ? (
                 <button onClick={enableMic} className="flex items-center gap-2 rounded-md bg-[#1d4ed8] px-5 py-2.5 font-semibold text-white"><Mic size={18} /> Allow microphone</button>

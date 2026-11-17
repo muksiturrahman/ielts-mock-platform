@@ -96,3 +96,29 @@ describe('real-test answer forms', () => {
     expect(expandAccepted('10 am / 10:00')).toContain('10:00')
   })
 })
+
+describe('audit round 2 answer forms', () => {
+  it('am/pm only as a whole word', () => {
+    expect(isCompletionCorrect('two ambulances', ['2 ambulances'])).toBe(true)
+    expect(normalizeAnswer('10am')).toBe('10:00 am')
+  })
+  it('millions with several commas', () => {
+    expect(isCompletionCorrect('3,000,000', ['3000000'])).toBe(true)
+  })
+  it('month-first date with a year', () => {
+    expect(isCompletionCorrect('March 21 2024', ['21 March 2024'], { maxWords: 2, allowNumber: true })).toBe(true)
+  })
+  it('hundreds', () => {
+    expect(isCompletionCorrect('one hundred', ['100'])).toBe(true)
+    expect(isCompletionCorrect('a hundred', ['100'])).toBe(true)
+  })
+  it('24-hour dot times, units and ampersand', () => {
+    expect(isCompletionCorrect('10.30', ['10:30'])).toBe(true)
+    expect(isCompletionCorrect('100km', ['100 km'])).toBe(true)
+    expect(isCompletionCorrect('bread & butter', ['bread and butter'])).toBe(true)
+  })
+  it('prices keep working', () => {
+    expect(isCompletionCorrect('£4.50', ['4.50'])).toBe(true)
+    expect(isCompletionCorrect('£45.00', ['45.00'])).toBe(true)
+  })
+})

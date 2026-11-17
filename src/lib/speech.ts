@@ -38,13 +38,17 @@ export function parseScript(transcript: string): ScriptLine[] {
 }
 
 export function speak(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: number; volume?: number } = {}): Promise<void> {
+  if (!ttsSupported()) return Promise.resolve()
   return new Promise(resolve => {
     const u = new SpeechSynthesisUtterance(text)
     if (opts.voice) u.voice = opts.voice
     u.rate = opts.rate ?? 0.95
     u.volume = opts.volume ?? 1
-    u.onend = () => resolve()
-    u.onerror = () => resolve()
+    // Chrome sometimes drops long utterances without firing onend — never let the test hang on it.
+    const watchdog = setTimeout(() => resolve(), (text.length * 90) / u.rate + 3000)
+    const done = () => { clearTimeout(watchdog); resolve() }
+    u.onend = done
+    u.onerror = done
     speechSynthesis.speak(u)
   })
 }

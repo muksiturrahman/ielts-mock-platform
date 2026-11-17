@@ -6,6 +6,7 @@ import { Badge, Button, Card, Modal, cx, useToast } from '../components/ui'
 import { TaskChart } from '../components/TaskChart'
 import { CSV_HEADER, questionsFromCsv } from '../lib/csv'
 import { putMedia, resolveMediaUrl } from '../lib/media'
+import { testIssues } from '../lib/validate'
 import { saveTest, uid, useDB } from '../lib/store'
 import type { ChartData, ListeningSection, Option, QuestionGroup, QuestionType, ReadingSection, Test, WritingTask } from '../lib/types'
 import { Passage } from '../exam/Passage'
@@ -26,23 +27,6 @@ const textToOpts = (t: string): Option[] => t.split('\n').map(l => l.trim()).fil
 })
 const lines = (t: string) => t.split('\n').map(x => x.trim()).filter(Boolean)
 
-/** Numbering problems that would break scoring: duplicates and gaps in 1..N. */
-function validate(t: Test): string[] {
-  const issues: string[] = []
-  for (const [m, secs] of [['Listening', t.listening?.sections], ['Reading', t.reading?.sections]] as const) {
-    if (!secs?.length) continue
-    const nums = secs.flatMap(s => s.groups.flatMap(g => g.questions.map(q => q.number)))
-    const dup = nums.filter((n, i) => nums.indexOf(n) !== i)
-    if (dup.length) issues.push(`${m}: duplicate question numbers ${[...new Set(dup)].join(', ')}`)
-    const max = Math.max(0, ...nums)
-    const missing = Array.from({ length: max }, (_, i) => i + 1).filter(n => !nums.includes(n))
-    if (missing.length) issues.push(`${m}: missing question numbers ${missing.join(', ')}`)
-    if (nums.length && nums.length !== 40) issues.push(`${m}: ${nums.length} questions (a full test has 40)`)
-    secs.forEach(s => s.groups.forEach(g => g.questions.forEach(q => { if (!q.answer.length) issues.push(`${m} Q${q.number}: no answer key`) })))
-  }
-  return issues
-}
-
 export default function TestEditor() {
   const { testId } = useParams()
   const stored = useDB(d => d.tests.find(t => t.id === testId))
@@ -58,16 +42,18 @@ export default function TestEditor() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
 
-  const issues = useMemo(() => (test ? validate(test) : []), [test])
+  const { blocking, warnings } = useMemo(() => (test ? testIssues(test) : { blocking: [], warnings: [] }), [test])
+  const issues = [...blocking, ...warnings]
   if (!stored || !test) return <Navigate to="/admin" replace />
 
   const set = (fn: (t: Test) => Test) => { setTest(t => fn(t!)); setDirty(true) }
   const save = (status?: Test['status']) => {
     const next = { ...test, ...(status ? { status } : {}) }
-    saveTest(next)
-    setTest(next)
+    const saved = saveTest(next)
+    setTest({ ...next, status: saved })
     setDirty(false)
-    toast(status === 'published' ? 'Saved and published' : 'Saved', 'success')
+    if (next.status === 'published' && saved !== 'published') toast(`Saved as a draft — fix ${blocking.length} problem${blocking.length > 1 ? 's' : ''} before publishing`, 'error')
+    else toast(status === 'published' ? 'Saved and published' : 'Saved', 'success')
   }
 
   return (
@@ -78,7 +64,7 @@ export default function TestEditor() {
         <Badge tone={test.status === 'published' ? 'green' : 'amber'}>{test.status}</Badge>
         {dirty && <Badge tone="rose">Unsaved changes</Badge>}
         <Button variant="secondary" onClick={() => save()}><Save size={16} /> Save</Button>
-        {test.status === 'draft' ? <Button onClick={() => save('published')} disabled={issues.some(i => i.includes('duplicate') || i.includes('no answer'))}>Publish</Button> : <Button variant="ghost" onClick={() => save('draft')}>Unpublish</Button>}
+        {test.status === 'draft' ? <Button onClick={() => save('published')} disabled={blocking.length > 0} title={blocking.length ? 'Fix the problems listed below first' : undefined}>Publish</Button> : <Button variant="ghost" onClick={() => save('draft')}>Unpublish</Button>}
       </div>
 
       {issues.length > 0 && (

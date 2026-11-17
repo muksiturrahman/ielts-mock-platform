@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../lib/media'
 import { parseScript, playScript, speak, stopSpeaking, ttsSupported } from '../lib/speech'
 import { patchAttempt, useDB } from '../lib/store'
+import { useToast } from '../components/ui'
 import { fmtClock, jumpTo, partNav, QuestionNav, TopBar, useDeadline, useNow } from './ExamChrome'
 import type { ModuleProps } from './ExamPage'
 import { QuestionGroupView } from './QuestionGroupView'
@@ -14,18 +15,26 @@ const CHECK_MS = 2 * 60_000
 const PREVIEW_SEC = 30
 
 /** Plays one listening part once: uploaded audio if present, otherwise the script via text-to-speech. */
-async function playPart(section: { transcript: string; audio?: string; context: string }, opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement }) {
-  const url = await resolveMediaUrl(section.audio)
+async function playPart(section: { transcript: string; audio?: string; context: string }, opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement; onAudioError?: () => void }) {
+  const url = await resolveMediaUrl(section.audio).catch(() => undefined)
   if (url) {
     const el = opts.audioEl
-    el.src = url
-    el.volume = opts.getVolume()
-    await el.play()
-    await new Promise<void>(resolve => {
-      el.onended = () => resolve()
-      opts.signal.addEventListener('abort', () => { el.pause(); resolve() })
-    })
-    return
+    try {
+      el.src = url
+      el.volume = opts.getVolume()
+      await new Promise<void>((resolve, reject) => {
+        el.onended = () => resolve()
+        el.onerror = () => reject(el.error)
+        opts.signal.addEventListener('abort', () => { el.pause(); resolve() })
+        el.play().catch(reject) // corrupt file, or the browser blocked playback (iOS)
+      })
+      return
+    } catch {
+      el.pause()
+      if (opts.signal.aborted) return
+      opts.onAudioError?.()
+      // fall through: read the script aloud so the test can continue
+    }
   }
   await playScript(parseScript(section.transcript), opts)
 }
@@ -40,6 +49,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
   const volumeRef = useRef(volume)
   volumeRef.current = volume
   const audioRef = useRef<HTMLAudioElement>(null)
+  const toast = useToast()
 
   // progress.section = part whose audio is playing; -1 when all audio has finished.
   const [playing, setPlaying] = useState<number | null>(null)
@@ -77,9 +87,11 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
       patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i } } }))
       setPlaying(i)
       setView(i)
-      await previewTime(i, ctrl.signal)
+      // An uploaded recording carries its own "you have some time to look at…" pauses.
+      if (!sections[i].audio) await previewTime(i, ctrl.signal)
       if (ctrl.signal.aborted) return
-      await playPart(sections[i], { rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current! })
+      await playPart(sections[i], { rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current!,
+        onAudioError: () => toast(`The audio for ${sections[i].title} couldn't play, so the recording script is being read aloud instead.`, 'error') })
       if (i < sections.length - 1 && !ctrl.signal.aborted) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return

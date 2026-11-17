@@ -8,6 +8,7 @@ import { restoreSeed, SEED_TESTS } from '../data/seed'
 import { attemptOverall, availableModules, MODULE_LABEL } from '../lib/attempts'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from '../lib/prompts'
 import { deleteTest, saveTest, setSettings, uid, useDB } from '../lib/store'
+import { testIssues } from '../lib/validate'
 import type { Test } from '../lib/types'
 
 type Tab = 'tests' | 'analytics' | 'prompts'
@@ -101,7 +102,12 @@ function Library() {
                   <td className="px-3 py-3">
                     <div className="flex justify-end gap-1">
                       <IconBtn title="Edit" onClick={() => navigate(`/admin/tests/${t.id}`)}><Pencil size={15} /></IconBtn>
-                      <IconBtn title={t.status === 'published' ? 'Unpublish' : 'Publish'} onClick={() => { saveTest({ ...t, status: t.status === 'published' ? 'draft' : 'published' }); toast(t.status === 'published' ? 'Moved to drafts' : 'Published — students can see it now', 'success') }}>
+                      <IconBtn title={t.status === 'published' ? 'Unpublish' : 'Publish'} onClick={() => {
+                        if (t.status === 'published') { saveTest({ ...t, status: 'draft' }); return toast('Moved to drafts', 'success') }
+                        const n = testIssues(t).blocking.length
+                        if (n) return toast(`Can't publish — ${n} problem${n > 1 ? 's' : ''} to fix. Open the test to see them.`, 'error')
+                        saveTest({ ...t, status: 'published' }); toast('Published — students can see it now', 'success')
+                      }}>
                         {t.status === 'published' ? <EyeOff size={15} /> : <Eye size={15} />}
                       </IconBtn>
                       <IconBtn title="Duplicate" onClick={() => { saveTest({ ...structuredClone(t), id: uid('test-'), title: `${t.title} (copy)`, status: 'draft', createdAt: Date.now() }); toast('Duplicated') }}><Copy size={15} /></IconBtn>

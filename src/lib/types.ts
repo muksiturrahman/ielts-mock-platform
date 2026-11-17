@@ -182,6 +182,8 @@ export interface WritingResult {
   band?: number
   status: 'pending' | 'marking' | 'done' | 'error'
   error?: string
+  /** Last time the tab doing the marking said it was still alive (epoch ms). */
+  heartbeat?: number
 }
 
 export interface SpeakingAnswer {
@@ -221,6 +223,8 @@ export interface SpeakingResult {
   improvements?: string[]
   status: 'pending' | 'marking' | 'done' | 'error'
   error?: string
+  /** Last time the tab doing the marking said it was still alive (epoch ms). */
+  heartbeat?: number
 }
 
 export interface ExaminerReview {

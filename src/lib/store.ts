@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Attempt, Profile, ReviewState, Settings, Test, VocabWord } from './types'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from './prompts'
+import { testIssues } from './validate'
 
 export interface DB {
   version: number
@@ -123,12 +124,15 @@ window.addEventListener('storage', e => {
 // ---------- helpers ----------
 export const uid = (p = '') => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
 
-export function saveTest(test: Test) {
+/** Saves a test; a published test with blocking problems is saved as a draft. Returns the status actually saved. */
+export function saveTest(test: Test): Test['status'] {
+  const status = test.status === 'published' && testIssues(test).blocking.length ? 'draft' : test.status
   update(d => {
     const exists = d.tests.some(t => t.id === test.id)
-    const t = { ...test, updatedAt: Date.now() }
+    const t = { ...test, status, updatedAt: Date.now() }
     return { ...d, tests: exists ? d.tests.map(x => (x.id === test.id ? t : x)) : [...d.tests, t] }
   })
+  return status
 }
 
 export function deleteTest(id: string) {

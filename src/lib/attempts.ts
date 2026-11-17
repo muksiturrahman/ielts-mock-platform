@@ -85,7 +85,8 @@ export function startModule(attemptId: string, module: ModuleKey) {
 export function submitModule(attemptId: string, module: ModuleKey) {
   const a = getAttempt(attemptId)
   const test = a && getTest(a.testId)
-  if (!a || !test) return
+  // Timer and button can fire together: submit (and start paid AI marking) only once.
+  if (!a || !test || a.progress[module]?.submittedAt) return
   const results = { ...a.results }
   if (module === 'listening' && test.listening) results.listening = scoreObjective(test.listening.sections, a.answers, 'listening', a.variant, a.sections)
   if (module === 'reading' && test.reading) results.reading = scoreObjective(test.reading.sections, a.answers, 'reading', a.variant, a.sections)
@@ -108,15 +109,15 @@ export function submitModule(attemptId: string, module: ModuleKey) {
 export async function markWriting(attemptId: string) {
   const a = getAttempt(attemptId)
   const test = a && getTest(a.testId)
-  if (!a || !test?.writing) return
+  if (!a || !test?.writing || isLive(a.results.writing)) return // already being marked (double click / other tab)
   const prev = a.results.writing
-  patchAttempt(attemptId, x => ({ results: { ...x.results, writing: { ...x.results.writing, status: 'marking' } } }))
+  patchAttempt(attemptId, x => ({ results: { ...x.results, writing: { ...x.results.writing, status: 'marking', heartbeat: Date.now() } } }))
   const tasks = test.writing.tasks.filter(t => !a.sections || a.sections.includes(t.number))
   // Mark tasks independently: one failed task keeps the other's result, and a retry only re-marks what's missing.
-  const settled = await Promise.allSettled(tasks.map(t => {
+  const settled = await withHeartbeat(attemptId, 'writing', () => Promise.allSettled(tasks.map(t => {
     const done = t.number === 1 ? prev?.task1 : prev?.task2
     return done ?? evaluateWriting(t, t.number === 1 ? a.writing.task1 : a.writing.task2, a.variant)
-  }))
+  })))
   const get = (n: number) => {
     const r = settled[tasks.findIndex(t => t.number === n)]
     return r?.status === 'fulfilled' ? r.value : undefined
@@ -136,27 +137,44 @@ export async function markWriting(attemptId: string) {
 
 export async function markSpeaking(attemptId: string) {
   const a = getAttempt(attemptId)
-  if (!a) return
+  if (!a || isLive(a.results.speaking)) return
   const metrics = computeMetrics(a.speaking)
   if (!a.speaking.some(s => s.transcript.trim())) {
-    const error = 'No speech was transcribed, so it can\'t be marked. Live transcription needs Chrome or Edge with microphone access — retake the Speaking test there.'
+    const error = a.speaking.length
+      ? 'No speech was transcribed, so it can\'t be marked. Live transcription needs Chrome or Edge with microphone access — retake the Speaking test there.'
+      : 'Speaking was skipped (no microphone), so there is nothing to mark. Retake the Speaking test with a working microphone.'
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error } } }))
     return
   }
-  patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { ...x.results.speaking, metrics, status: 'marking' } } }))
+  patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { ...x.results.speaking, metrics, status: 'marking', heartbeat: Date.now() } } }))
   try {
-    const r = await evaluateSpeaking(a.speaking, metrics)
+    const r = await withHeartbeat(attemptId, 'speaking', () => evaluateSpeaking(a.speaking, metrics))
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'done', metrics, ...r } } }))
   } catch (e) {
     patchAttempt(attemptId, x => ({ results: { ...x.results, speaking: { status: 'error', metrics, error: (e as Error).message } } }))
   }
 }
 
-/** Marking that was running when the tab closed can never finish — show it as failed so it can be retried. */
+// ---------- marking liveness ----------
+// The tab that is marking refreshes a heartbeat; marking with a stale heartbeat was cut off (tab closed).
+const HEARTBEAT_MS = 15_000
+const isLive = (r?: { status: string; heartbeat?: number }) => r?.status === 'marking' && Date.now() - (r.heartbeat ?? 0) < HEARTBEAT_MS * 3
+
+async function withHeartbeat<T>(attemptId: string, m: 'writing' | 'speaking', fn: () => Promise<T>): Promise<T> {
+  const beat = () => patchAttempt(attemptId, x => (x.results[m] ? { results: { ...x.results, [m]: { ...x.results[m], heartbeat: Date.now() } } } : {}))
+  const timer = setInterval(beat, HEARTBEAT_MS)
+  try {
+    return await fn()
+  } finally {
+    clearInterval(timer)
+  }
+}
+
+/** Marking that was running when its tab closed can never finish — show it as failed so it can be retried. */
 export function recoverInterruptedMarking() {
   for (const a of getDB().attempts) {
     for (const m of ['writing', 'speaking'] as const) {
-      if (a.results[m]?.status !== 'marking') continue
+      if (a.results[m]?.status !== 'marking' || isLive(a.results[m])) continue
       patchAttempt(a.id, x => ({ results: { ...x.results, [m]: { ...x.results[m]!, status: 'error', error: 'Marking was interrupted because the page was closed. Retry to mark it.' } } }))
     }
   }
