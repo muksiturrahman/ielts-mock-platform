@@ -308,3 +308,16 @@ export interface Settings {
   contrast: 'standard' | 'yellow-black' | 'white-black'
   ttsRate: number
 }
+
+/** Spaced review of one mistake/correction (Leitner boxes). */
+export interface ReviewState {
+  box: number // 0 = new/unsure … REVIEW_DAYS.length = mastered
+  due: number // epoch ms
+}
+
+export interface VocabWord {
+  id: string
+  word: string
+  meaning: string
+  addedAt: number
+}

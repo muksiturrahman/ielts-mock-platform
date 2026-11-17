@@ -1,11 +1,15 @@
 import { attemptOverall, moduleBands } from './attempts'
-import type { Attempt, ModuleKey } from './types'
+import { availableModules } from './attempts'
+import { typeLabel } from './scoring'
+import type { Attempt, ModuleKey, Test } from './types'
 
 export interface Weakness {
   area: string
   detail: string
   score: number // 0..1 accuracy, or band/9
   module: ModuleKey
+  /** Question type label, for Listening/Reading weaknesses. */
+  type?: string
 }
 
 /** Points for the progress chart, oldest first. */
@@ -18,13 +22,47 @@ export function progressSeries(attempts: Attempt[]) {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined)
 
-export function skillAverages(attempts: Attempt[]): Partial<Record<ModuleKey, number>> {
-  const out: Partial<Record<ModuleKey, number>> = {}
+export interface SkillBand {
+  band: number
+  /** 'full' = average of full mocks; 'practice' = no full mock yet, so an estimate from practice runs. */
+  source: 'full' | 'practice'
+}
+
+/**
+ * Skill bands from the last 5 full mocks. Practice runs (one passage, untimed, answers checkable) score
+ * easier, so they only count when there's no full-mock result for that skill yet.
+ */
+export function skillAverages(attempts: Attempt[]): Partial<Record<ModuleKey, SkillBand>> {
+  const out: Partial<Record<ModuleKey, SkillBand>> = {}
+  const recent = [...attempts].sort((a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt))
   for (const m of ['listening', 'reading', 'writing', 'speaking'] as ModuleKey[]) {
-    const v = mean(attempts.map(a => moduleBands(a)[m]).filter((x): x is number => typeof x === 'number'))
-    if (v !== undefined) out[m] = Math.round(v * 2) / 2
+    const bands = (mode: Attempt['mode']) => recent.filter(a => a.mode === mode).map(a => moduleBands(a)[m]).filter((x): x is number => typeof x === 'number').slice(0, 5)
+    const full = bands('full')
+    const source = full.length ? 'full' : 'practice'
+    const v = mean(full.length ? full : bands('practice'))
+    if (v !== undefined) out[m] = { band: Math.round(v * 2) / 2, source }
   }
   return out
+}
+
+/** The test part with the most questions of a type — or, for Writing/Speaking, a test not yet practised. */
+export function practiceTarget(tests: Test[], attempts: Attempt[], w: Weakness): { test: Test; sections?: number[] } | undefined {
+  const usable = tests.filter(t => t.status === 'published' && !t.deleted && availableModules(t).includes(w.module))
+  if (w.module === 'listening' || w.module === 'reading') {
+    let best: { test: Test; sections: number[]; n: number } | undefined
+    for (const test of usable) {
+      test[w.module]!.sections.forEach((s, i) => {
+        const n = s.groups.filter(g => typeLabel(g.type) === w.type).reduce((c, g) => c + g.questions.length, 0)
+        if (n > (best?.n ?? 0)) best = { test, sections: [i], n }
+      })
+    }
+    return best
+  }
+  const used = new Set(attempts.filter(a => a.modules.includes(w.module)).map(a => a.testId))
+  const test = usable.find(t => !used.has(t.id)) ?? usable[0]
+  if (!test) return undefined
+  // Writing: practise the task the criterion hurts most — Task 2 carries double weight.
+  return { test, sections: w.module === 'writing' ? [test.writing!.tasks.some(t => t.number === 2) ? 2 : 1] : undefined }
 }
 
 /** Question types under 60% accuracy and rubric criteria averaging below 6, worst first. */
@@ -40,7 +78,7 @@ export function weaknesses(attempts: Attempt[]): Weakness[] {
       }
     }
     for (const [k, v] of Object.entries(agg)) {
-      if (v.t >= 3 && v.c / v.t < 0.6) out.push({ area: `${k} (${module})`, detail: `${Math.round((v.c / v.t) * 100)}% accuracy over ${v.t} questions`, score: v.c / v.t, module })
+      if (v.t >= 3 && v.c / v.t < 0.6) out.push({ area: `${k} (${module})`, detail: `${Math.round((v.c / v.t) * 100)}% accuracy over ${v.t} questions`, score: v.c / v.t, module, type: k })
     }
   }
   const crit: Record<string, number[]> = {}

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { Attempt, Profile, Settings, Test } from './types'
+import type { Attempt, Profile, ReviewState, Settings, Test, VocabWord } from './types'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from './prompts'
 
 export interface DB {
@@ -9,6 +9,8 @@ export interface DB {
   profile: Profile
   settings: Settings
   seeded: string[] // seed test ids already installed (so deleting one doesn't resurrect it)
+  reviews?: Record<string, ReviewState> // mistake key → spaced-review state
+  vocab?: VocabWord[] // words the learner added themselves
 }
 
 const KEY = 'ielts-mock.db'
@@ -159,6 +161,41 @@ export function deleteAttempt(id: string) {
 
 export function setSettings(patch: Partial<Settings>) {
   update(d => ({ ...d, settings: { ...d.settings, ...patch } }))
+}
+
+// ---------- spaced review ----------
+/** Days until the next review after each "Got it"; passing the last box = mastered. */
+export const REVIEW_DAYS = [1, 3, 7]
+const DAY = 86_400_000
+
+export function isMastered(r?: ReviewState) {
+  return (r?.box ?? 0) >= REVIEW_DAYS.length
+}
+export function isDue(r?: ReviewState, now = Date.now()) {
+  return !isMastered(r) && (r?.due ?? 0) <= now
+}
+
+export function markReview(key: string, gotIt: boolean) {
+  update(d => {
+    const box = gotIt ? (d.reviews?.[key]?.box ?? 0) + 1 : 0
+    const days = gotIt ? REVIEW_DAYS[box - 1] ?? 0 : 1
+    return { ...d, reviews: { ...d.reviews, [key]: { box, due: Date.now() + days * DAY } } }
+  })
+}
+
+export function resetReview(key: string) {
+  update(d => {
+    const { [key]: _, ...rest } = d.reviews ?? {}
+    return { ...d, reviews: rest }
+  })
+}
+
+export function addVocab(word: string, meaning: string) {
+  update(d => ({ ...d, vocab: [{ id: uid('v-'), word, meaning, addedAt: Date.now() }, ...(d.vocab ?? [])] }))
+}
+
+export function deleteVocab(id: string) {
+  update(d => ({ ...d, vocab: (d.vocab ?? []).filter(v => v.id !== id) }))
 }
 
 export function setProfile(patch: Partial<Profile>) {

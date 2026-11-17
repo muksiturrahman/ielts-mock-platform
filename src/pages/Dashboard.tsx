@@ -1,9 +1,12 @@
 import { motion } from 'motion/react'
-import { ArrowRight, Award, BarChart3, Flame, Target, TrendingUp, TriangleAlert, Zap } from 'lucide-react'
+import { ArrowRight, Award, BarChart3, Flame, Target, TrendingUp, TriangleAlert, Zap, RotateCcw } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CartesianGrid, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BandRing, Button, Card, CountUp, Empty, bandColor, fmtBand, fmtDate } from '../components/ui'
-import { progressSeries, skillAverages, weaknesses } from '../lib/analytics'
+import { practiceTarget, progressSeries, skillAverages, weaknesses, type Weakness } from '../lib/analytics'
+import { collectMistakes, collectSpeakingNotes, collectWritingNotes } from '../lib/review'
+import { createAttempt } from '../lib/attempts'
+import { isDue } from '../lib/store'
 import { attemptOverall, MODULE_LABEL } from '../lib/attempts'
 import { useDB } from '../lib/store'
 import type { ModuleKey } from '../lib/types'
@@ -23,6 +26,15 @@ export default function Dashboard() {
   const skills = skillAverages(done)
   const series = progressSeries(attempts)
   const weak = weaknesses(done)
+  const tests = useDB(d => d.tests)
+  const reviews = useDB(d => d.reviews)
+  const dueCount = [...collectMistakes(attempts, tests), ...collectWritingNotes(attempts), ...collectSpeakingNotes(attempts)].filter(x => isDue(reviews?.[x.key])).length
+  const practise = (w: Weakness) => {
+    const target = practiceTarget(tests, attempts, w)
+    if (!target) return navigate('/tests')
+    const a = createAttempt(target.test, { mode: 'practice', modules: [w.module], sections: target.sections, timed: false })
+    navigate(`/exam/${a.id}`)
+  }
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const streak = (() => {
@@ -56,6 +68,11 @@ export default function Dashboard() {
               <Button variant="secondary" onClick={() => navigate('/tests')} className="border-0">
                 <Zap size={16} className="text-brand-600" /> Start a mock test
               </Button>
+              {dueCount > 0 && (
+                <Button variant="ghost" onClick={() => navigate('/mistakes')} className="bg-white/15 text-white hover:bg-white/25">
+                  <RotateCcw size={16} /> Review {dueCount} due mistake{dueCount === 1 ? '' : 's'}
+                </Button>
+              )}
               {inProgress[0] && (
                 <Button variant="ghost" onClick={() => navigate(`/exam/${inProgress[0].id}`)} className="bg-white/15 text-white hover:bg-white/25">
                   Resume “{inProgress[0].testTitle}” <ArrowRight size={16} />
@@ -81,7 +98,8 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {(['listening', 'reading', 'writing', 'speaking'] as ModuleKey[]).map((m, i) => {
           const Icon = MODULE_ICON[m]
-          const b = skills[m]
+          const sk = skills[m]
+          const b = sk?.band
           return (
             <Card key={m} delay={0.1 + i * 0.05} className="p-5">
               <div className="flex items-center justify-between">
@@ -92,7 +110,7 @@ export default function Dashboard() {
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <motion.div className="h-full rounded-full" style={{ background: bandColor(b) }} initial={{ width: 0 }} animate={{ width: `${((b ?? 0) / 9) * 100}%` }} transition={{ duration: 1, delay: 0.3 }} />
               </div>
-              <div className="mt-1.5 text-xs text-slate-400">Average band</div>
+              <div className="mt-1.5 text-xs text-slate-400" title={sk?.source === 'practice' ? 'No full mock yet — estimated from practice, which tends to score higher' : 'Average of your last 5 full mocks'}>{sk?.source === 'practice' ? 'Practice estimate' : 'Full-mock average'}</div>
             </Card>
           )
         })}
@@ -125,7 +143,7 @@ export default function Dashboard() {
             <p className="text-sm text-slate-500">Complete more modules to see your skill profile.</p>
           ) : (
             <ResponsiveContainer width="100%" height={250}>
-              <RadarChart data={(['listening', 'reading', 'writing', 'speaking'] as ModuleKey[]).map(m => ({ skill: MODULE_LABEL[m], band: skills[m] ?? 0 }))}>
+              <RadarChart data={(['listening', 'reading', 'writing', 'speaking'] as ModuleKey[]).map(m => ({ skill: MODULE_LABEL[m], band: skills[m]?.band ?? 0 }))}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="skill" tick={{ fontSize: 12 }} />
                 <Radar dataKey="band" stroke="#6366f1" fill="#6366f1" fillOpacity={0.35} />
@@ -149,7 +167,8 @@ export default function Dashboard() {
                     <div className="text-sm font-semibold text-slate-800">{w.area}</div>
                     <div className="text-xs text-slate-500">{w.detail}</div>
                   </div>
-                  <Link to="/tests" className="text-xs font-semibold text-brand-600 hover:underline">Practise</Link>
+                  {w.type && <Link to={`/mistakes?tab=${w.module}&type=${encodeURIComponent(w.type)}`} className="text-xs font-semibold text-slate-500 hover:underline">Mistakes</Link>}
+                  <button onClick={() => practise(w)} className="text-xs font-semibold text-brand-600 hover:underline" title={w.type ? `Opens the part with the most ${w.type} questions` : `Practise ${w.module}`}>Practise</button>
                 </motion.li>
               ))}
             </ul>

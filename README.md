@@ -28,6 +28,7 @@ All data stays in your browser.
 - **Dashboard:** progress charts for all 4 skills, a skill radar, weak areas (by question type and criterion), and a day streak.
 - **Full review of past tests:** reopen any finished Listening or Reading module exactly as you sat it (passage, your highlights, the transcript) with every answer marked, or switch to a compact answer sheet: your answer, the correct answer and the explanation for each question. Click a wrong-question chip to jump straight to it.
 - **Mistakes notebook:** every wrong answer from every test in one place, filterable by module and question type, with your most frequent mistake type, the explanation, a link back to the question in context, and **Retry this part**. Writing and Speaking corrections from the AI are collected there too.
+- **Spaced review & vocabulary** — mark each mistake “Got it” and it returns after 1, 3 and 7 days until mastered; a Vocabulary tab collects the AI’s better-word suggestions plus your own words. Focus areas open the exact part with most questions of your weak type, and skill bands come from full mocks (practice is shown as an estimate).
 - **History filters:** by mode (full mock or practice) and by module, with right/total counts per attempt.
 - **Dark theme:** Light, Dark or System, from the sidebar.
 - **Modes:** full mock (all modules in a row) or practice per module or part, timed or untimed, with instant answer checking and explanations.

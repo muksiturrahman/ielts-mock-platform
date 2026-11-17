@@ -1,19 +1,21 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { ArrowRight, BookOpen, Headphones, Lightbulb, Mic, NotebookPen, PenLine, RotateCcw, Target } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, Headphones, Languages, Lightbulb, Mic, NotebookPen, PenLine, Plus, RotateCcw, Target, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Empty, PageHeader, cx, fmtDate } from '../components/ui'
 import { createAttempt } from '../lib/attempts'
-import { collectMistakes, collectSpeakingNotes, collectWritingNotes, questionText, type Mistake } from '../lib/review'
+import { collectMistakes, collectSpeakingNotes, collectVocab, collectWritingNotes, questionText, type Mistake } from '../lib/review'
 import { typeLabel } from '../lib/scoring'
-import { useDB } from '../lib/store'
+import { addVocab, deleteVocab, isDue, isMastered, markReview, REVIEW_DAYS, resetReview, useDB } from '../lib/store'
 
-type Tab = 'listening' | 'reading' | 'writing' | 'speaking'
+type Tab = 'listening' | 'reading' | 'writing' | 'speaking' | 'vocabulary'
+type View = 'due' | 'all' | 'mastered'
 const TABS: { id: Tab; label: string; icon: typeof Headphones }[] = [
   { id: 'reading', label: 'Reading', icon: BookOpen },
   { id: 'listening', label: 'Listening', icon: Headphones },
   { id: 'writing', label: 'Writing', icon: PenLine },
   { id: 'speaking', label: 'Speaking', icon: Mic },
+  { id: 'vocabulary', label: 'Vocabulary', icon: Languages },
 ]
 
 export default function Mistakes() {
@@ -22,16 +24,25 @@ export default function Mistakes() {
   const mistakes = useMemo(() => collectMistakes(attempts, tests), [attempts, tests])
   const writing = useMemo(() => collectWritingNotes(attempts), [attempts])
   const speaking = useMemo(() => collectSpeakingNotes(attempts), [attempts])
-  const counts: Record<Tab, number> = {
-    reading: mistakes.filter(m => m.module === 'reading').length,
-    listening: mistakes.filter(m => m.module === 'listening').length,
-    writing: writing.length,
-    speaking: speaking.length,
-  }
-  const [tab, setTab] = useState<Tab>(() => TABS.find(t => counts[t.id])?.id ?? 'reading')
-  const [type, setType] = useState('all')
+  const ownVocab = useDB(d => d.vocab)
+  const vocab = useMemo(() => collectVocab(attempts, ownVocab), [attempts, ownVocab])
+  const reviews = useDB(d => d.reviews) ?? {}
+  const [params] = useSearchParams()
+  // Arriving from a Dashboard focus area (?type=) shows every mistake of that type, not just due ones.
+  const [view, setView] = useState<View>(() => (params.get('type') ? 'all' : 'due'))
+  // Spaced review: "due" hides what was recently reviewed or is mastered.
+  const inView = <T extends { key: string }>(xs: T[]) =>
+    xs.filter(x => (view === 'all' ? true : view === 'mastered' ? isMastered(reviews[x.key]) : isDue(reviews[x.key])))
+  const all = { reading: mistakes.filter(m => m.module === 'reading'), listening: mistakes.filter(m => m.module === 'listening'), writing, speaking, vocabulary: vocab }
+  const counts = Object.fromEntries(Object.entries(all).map(([k, v]) => [k, inView(v as { key: string }[]).length])) as Record<Tab, number>
+  // A vocabulary correction shows in both its Writing/Speaking tab and Vocabulary — count it once.
+  const everything = [...new Map((Object.values(all).flat() as { key: string }[]).map(x => [x.key, x])).values()]
+  const dueTotal = everything.filter(x => isDue(reviews[x.key])).length
+  const masteredTotal = everything.filter(x => isMastered(reviews[x.key])).length
+  const [tab, setTab] = useState<Tab>(() => (params.get('tab') as Tab) || (TABS.find(t => counts[t.id])?.id ?? 'reading'))
+  const [type, setType] = useState(params.get('type') ?? 'all')
 
-  const objective = mistakes.filter(m => m.module === tab)
+  const objective = inView(mistakes.filter(m => m.module === tab))
   const types = [...new Set(objective.map(m => typeLabel(m.item.type)))]
   const shown = objective.filter(m => type === 'all' || typeLabel(m.item.type) === type)
   const worst = Object.entries(
@@ -40,9 +51,15 @@ export default function Mistakes() {
 
   return (
     <div>
-      <PageHeader title="Mistakes notebook" subtitle="Every wrong answer and AI correction from all your tests — learn from each one, then practise that part again." />
+      <PageHeader title="Mistakes notebook" subtitle="Every wrong answer and AI correction from your tests. Mark each one “Got it” — it comes back after 1, 3 and 7 days until it's mastered." />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {([['due', `Due for review (${dueTotal})`], ['all', `All (${everything.length})`], ['mastered', `Mastered (${masteredTotal})`]] as const).map(([v, label]) => (
+          <button key={v} onClick={() => setView(v)} className={cx('rounded-full border px-3 py-1 text-sm font-semibold transition', view === v ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')}>{label}</button>
+        ))}
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {TABS.map((t, i) => (
           <motion.button key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             onClick={() => { setTab(t.id); setType('all') }}
@@ -50,7 +67,7 @@ export default function Mistakes() {
             <span className={cx('rounded-xl p-2', tab === t.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600')}><t.icon size={18} /></span>
             <div>
               <div className="font-display text-2xl font-extrabold text-slate-900">{counts[t.id]}</div>
-              <div className="text-xs text-slate-500">{t.label} {t.id === 'writing' || t.id === 'speaking' ? 'corrections' : 'mistakes'}</div>
+              <div className="text-xs text-slate-500">{t.label} {t.id === 'vocabulary' ? 'words' : t.id === 'writing' || t.id === 'speaking' ? 'corrections' : 'mistakes'}</div>
             </div>
           </motion.button>
         ))}
@@ -77,8 +94,8 @@ export default function Mistakes() {
                 </div>
               )}
               {shown.length === 0 ? (
-                <Empty icon={<NotebookPen />} title={counts[tab] ? 'No mistakes of this type' : `No ${tab} mistakes yet`}>
-                  {counts[tab] ? 'Pick another filter.' : 'Wrong answers from your tests will collect here so you can learn from them.'}
+                <Empty icon={<NotebookPen />} title={counts[tab] ? 'No mistakes of this type' : emptyTitle(view, tab)}>
+                  {counts[tab] ? 'Pick another filter.' : emptyText(view)}
                 </Empty>
               ) : (
                 <div className="space-y-3">{shown.map((m, i) => <MistakeCard key={m.key} m={m} index={i} />)}</div>
@@ -87,10 +104,10 @@ export default function Mistakes() {
           )}
 
           {tab === 'writing' && (
-            writing.length === 0 ? <Empty icon={<PenLine />} title="No writing corrections yet">Corrections from AI-marked Writing tasks appear here.</Empty> : (
+            inView(writing).length === 0 ? <Empty icon={<PenLine />} title={emptyTitle(view, 'writing')}>{emptyText(view)}</Empty> : (
               <div className="grid gap-3 md:grid-cols-2">
-                {writing.map((w, i) => (
-                  <Correction key={w.key} index={i} type={w.note.type} quote={w.note.quote} fix={w.note.suggestion} why={w.note.issue}
+                {inView(writing).map((w, i) => (
+                  <Correction key={w.key} k={w.key} index={i} type={w.note.type} quote={w.note.quote} fix={w.note.suggestion} why={w.note.issue}
                     meta={`${w.attempt.testTitle} · Task ${w.task} · ${fmtDate(w.attempt.startedAt)}`} to={`/results/${w.attempt.id}?tab=writing`} />
                 ))}
               </div>
@@ -98,14 +115,28 @@ export default function Mistakes() {
           )}
 
           {tab === 'speaking' && (
-            speaking.length === 0 ? <Empty icon={<Mic />} title="No speaking notes yet">Notes from AI-marked Speaking tests appear here.</Empty> : (
+            inView(speaking).length === 0 ? <Empty icon={<Mic />} title={emptyTitle(view, 'speaking')}>{emptyText(view)}</Empty> : (
               <div className="grid gap-3 md:grid-cols-2">
-                {speaking.map((s, i) => (
-                  <Correction key={s.key} index={i} type={s.note.type} quote={s.note.quote} fix={s.note.upgrade} why={s.note.note}
+                {inView(speaking).map((s, i) => (
+                  <Correction key={s.key} k={s.key} index={i} type={s.note.type} quote={s.note.quote} fix={s.note.upgrade} why={s.note.note}
                     meta={`${s.attempt.testTitle} · ${fmtDate(s.attempt.startedAt)}`} to={`/results/${s.attempt.id}?tab=speaking`} />
                 ))}
               </div>
             )
+          )}
+
+          {tab === 'vocabulary' && (
+            <>
+              <AddWord />
+              {inView(vocab).length === 0 ? <Empty icon={<Languages />} title={emptyTitle(view, 'vocabulary')}>{view === 'due' ? 'Nothing to review right now.' : 'Better words suggested by the AI examiner in Writing and Speaking collect here, with any you add.'}</Empty> : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {inView(vocab).map((v, i) => (
+                    <Correction key={v.key} k={v.key} index={i} type="vocabulary" quote={v.from} fix={v.to} why={v.why} meta={v.source} to={v.link}
+                      onDelete={v.key.startsWith('vocab:') ? () => deleteVocab(v.key.slice(6)) : undefined} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </motion.div>
       </AnimatePresence>
@@ -152,6 +183,7 @@ function MistakeCard({ m, index }: { m: Mistake; index: number }) {
                 <Link to={`/results/${m.attempt.id}?tab=${m.module}&q=${m.item.number}`}><Button size="sm" variant="secondary">Review in context <ArrowRight size={14} /></Button></Link>
                 {test && q && <Button size="sm" onClick={retry}><RotateCcw size={14} /> Retry this part</Button>}
               </div>
+              <ReviewButtons k={m.key} />
             </div>
           </motion.div>
         )}
@@ -164,19 +196,70 @@ const TYPE_TONE: Record<string, 'rose' | 'violet' | 'sky' | 'amber' | 'brand' | 
   grammar: 'rose', vocabulary: 'violet', cohesion: 'sky', task: 'amber', spelling: 'rose', punctuation: 'slate', pronunciation: 'amber', hesitation: 'sky',
 }
 
-function Correction({ index, type, quote, fix, why, meta, to }: { index: number; type: string; quote: string; fix?: string; why: string; meta: string; to: string }) {
+function Correction({ k, index, type, quote, fix, why, meta, to, onDelete }: { k: string; index: number; type: string; quote: string; fix?: string; why: string; meta: string; to?: string; onDelete?: () => void }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 12) * 0.03 }}>
       <Card className="h-full p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <Badge tone={TYPE_TONE[type] ?? 'slate'}>{type}</Badge>
-          <Link to={to} className="text-xs font-semibold text-brand-600 hover:underline">Open</Link>
+          {to && <Link to={to} className="text-xs font-semibold text-brand-600 hover:underline">Open</Link>}
+          {onDelete && <button onClick={onDelete} title="Delete word" className="text-slate-400 hover:text-rose-500"><Trash2 size={14} /></button>}
         </div>
-        <p className="text-sm text-rose-600 line-through decoration-rose-300">“{quote}”</p>
-        {fix && <p className="mt-1 text-sm font-semibold text-emerald-600">→ {fix}</p>}
+        {quote && <p className="text-sm text-rose-600 line-through decoration-rose-300">“{quote}”</p>}
+        {fix && <p className={cx('text-sm font-semibold text-emerald-600', quote && 'mt-1')}>{quote ? '→ ' : ''}{fix}</p>}
         <p className="mt-2 text-sm text-slate-600">{why}</p>
         <p className="mt-3 text-xs text-slate-400">{meta}</p>
+        <ReviewButtons k={k} />
       </Card>
     </motion.div>
+  )
+}
+
+const emptyTitle = (view: View, tab: Tab) =>
+  view === 'due' ? 'All caught up' : view === 'mastered' ? 'Nothing mastered yet' : `No ${tab === 'vocabulary' ? 'words' : `${tab} mistakes`} yet`
+const emptyText = (view: View) =>
+  view === 'due' ? 'Nothing is due for review here. Items you marked “Got it” come back on their review day.'
+    : view === 'mastered' ? 'Mark an item “Got it” on each review day to master it.'
+      : 'Wrong answers and AI corrections from your tests collect here so you can learn from them.'
+
+/** Spaced-review controls: "Got it" moves the item to a later review day; the last one masters it. */
+function ReviewButtons({ k }: { k: string }) {
+  const r = useDB(d => d.reviews?.[k])
+  const days = Math.ceil(((r?.due ?? 0) - Date.now()) / 86_400_000)
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
+      {isMastered(r) ? (
+        <>
+          <span className="flex items-center gap-1 font-semibold text-emerald-600"><Check size={14} /> Mastered</span>
+          <button onClick={() => resetReview(k)} className="ml-auto text-slate-400 hover:underline">Review again</button>
+        </>
+      ) : (
+        <>
+          <button onClick={() => markReview(k, true)} className="flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700 hover:bg-emerald-100"><Check size={13} /> Got it</button>
+          <button onClick={() => markReview(k, false)} className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600 hover:bg-slate-200">Still unsure</button>
+          <span className="ml-auto text-slate-400">
+            {r ? (days > 0 ? `Next review in ${days} day${days === 1 ? '' : 's'}` : 'Due now') : 'New'} · {Math.min(r?.box ?? 0, REVIEW_DAYS.length)}/{REVIEW_DAYS.length}
+          </span>
+        </>
+      )}
+    </div>
+  )
+}
+
+function AddWord() {
+  const [word, setWord] = useState('')
+  const [meaning, setMeaning] = useState('')
+  const add = () => {
+    if (!word.trim()) return
+    addVocab(word.trim(), meaning.trim())
+    setWord('')
+    setMeaning('')
+  }
+  return (
+    <form onSubmit={e => { e.preventDefault(); add() }} className="mb-4 flex flex-wrap gap-2">
+      <input className="input max-w-56" placeholder="New word or phrase" value={word} onChange={e => setWord(e.target.value)} aria-label="Word" />
+      <input className="input min-w-60 flex-1" placeholder="Meaning or example sentence" value={meaning} onChange={e => setMeaning(e.target.value)} aria-label="Meaning" />
+      <Button type="submit" disabled={!word.trim()}><Plus size={16} /> Add word</Button>
+    </form>
   )
 }
