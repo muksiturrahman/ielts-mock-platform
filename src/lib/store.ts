@@ -130,7 +130,13 @@ export function saveTest(test: Test) {
 }
 
 export function deleteTest(id: string) {
-  update(d => ({ ...d, tests: d.tests.filter(t => t.id !== id) }))
+  // Tests with attempts are hidden, not removed, so their results, reviews and mistakes stay usable.
+  update(d => ({
+    ...d,
+    tests: d.attempts.some(a => a.testId === id)
+      ? d.tests.map(t => (t.id === id ? { ...t, deleted: true, status: 'draft' as const } : t))
+      : d.tests.filter(t => t.id !== id),
+  }))
 }
 
 export function saveAttempt(attempt: Attempt) {
@@ -159,14 +165,19 @@ export function setProfile(patch: Partial<Profile>) {
   update(d => ({ ...d, profile: { ...d.profile, ...patch } }))
 }
 
-export function exportBackup(): string {
-  return JSON.stringify(db, null, 2)
+/** API keys are left out: a backup file gets shared and synced more casually than the browser it came from. */
+export function exportBackup(media: Record<string, string> = {}): string {
+  return JSON.stringify({ ...db, settings: { ...db.settings, keys: {} }, media }, null, 2)
 }
 
-export function importBackup(json: string) {
-  const parsed = JSON.parse(json) as DB
+/** Restores everything; keeps this browser's API keys when the file has none. Returns the media to restore. */
+export function importBackup(json: string): Record<string, string> {
+  const { media, ...parsed } = JSON.parse(json) as DB & { media?: Record<string, string> }
   if (!Array.isArray(parsed.tests) || !Array.isArray(parsed.attempts)) throw new Error('Not a valid backup file')
-  update(() => ({ ...parsed, settings: migrateSettings(parsed.settings), profile: { ...DEFAULT_PROFILE, ...parsed.profile } }))
+  const settings = migrateSettings(parsed.settings)
+  if (!Object.values(settings.keys).some(Boolean)) settings.keys = db.settings.keys
+  update(() => ({ ...parsed, settings, profile: { ...DEFAULT_PROFILE, ...parsed.profile } }))
+  return media ?? {}
 }
 
 export function resetAll() {

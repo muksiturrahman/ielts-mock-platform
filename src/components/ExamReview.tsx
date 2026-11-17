@@ -17,6 +17,7 @@ export function ExamReview({ attempt, test, module, result, focus }: { attempt: 
   const [sectionIndex, setSectionIndex] = useState(startSection)
   const section = sections[sectionIndex]
   const wrong = result.items.filter(i => !i.isCorrect)
+  const marks = Object.fromEntries(result.items.map(i => [i.questionId, i]))
 
   const jump = (n: number) => {
     const target = result.items.find(i => i.number === n)
@@ -64,7 +65,7 @@ export function ExamReview({ attempt, test, module, result, focus }: { attempt: 
           )}
           <div className="max-h-[75vh] overflow-y-auto p-6 scroll-thin">
             {section.groups.map(g => (
-              <QuestionGroupView key={g.id} group={g} answers={attempt.answers} setAnswer={() => {}} flags={attempt.flags} toggleFlag={() => {}} review readOnly />
+              <QuestionGroupView key={g.id} group={g} answers={attempt.answers} setAnswer={() => {}} flags={attempt.flags} toggleFlag={() => {}} review readOnly marks={marks} />
             ))}
           </div>
         </div>

@@ -222,7 +222,7 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
                           <td className="px-4 py-2.5 font-semibold">{it.number}</td>
                           <td className="max-w-xs truncate px-4 py-2.5 text-slate-600" title={questionText(loc)}>{questionText(loc) || '—'}</td>
                           <td className={cx('px-4 py-2.5', !it.given && 'italic text-slate-400', !it.isCorrect && it.given && 'text-rose-600 line-through decoration-rose-300')}>{it.given || 'No answer'}</td>
-                          <td className="px-4 py-2.5 font-medium text-emerald-700">{loc?.question.answer.join(' / ') ?? it.correct}</td>
+                          <td className="px-4 py-2.5 font-medium text-emerald-700">{(it.accepted ?? loc?.question.answer)?.join(' / ') ?? it.correct}</td>
                           <td className="px-4 py-2.5">{it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}</td>
                         </tr>
                         {open === it.questionId && loc?.question.explanation && (

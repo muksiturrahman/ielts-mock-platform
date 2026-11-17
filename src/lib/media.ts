@@ -47,3 +47,27 @@ export async function resolveMediaUrl(ref?: string): Promise<string | undefined>
   urlCache.set(ref, url)
   return url
 }
+
+const toDataUrl = (b: Blob) => new Promise<string>((resolve, reject) => {
+  const r = new FileReader()
+  r.onload = () => resolve(r.result as string)
+  r.onerror = () => reject(r.error)
+  r.readAsDataURL(b)
+})
+
+/** Every stored blob (recordings, uploaded audio/images) as data URLs, for the backup file. */
+export async function exportAllMedia(): Promise<Record<string, string>> {
+  const ids = (await tx('readonly', s => s.getAllKeys())) as string[]
+  const out: Record<string, string> = {}
+  for (const id of ids) {
+    const blob = await getMedia(id)
+    if (blob) out[id] = await toDataUrl(blob)
+  }
+  return out
+}
+
+export async function importAllMedia(media: Record<string, string>) {
+  for (const [id, url] of Object.entries(media)) {
+    if (url.startsWith('data:')) await putMedia(await (await fetch(url)).blob(), id)
+  }
+}

@@ -169,7 +169,7 @@ export function scoreObjective(
           if (ok) credit--
           items.push({
             questionId: q.id, number: q.number, type: group.type, sectionIndex,
-            given: i === 0 ? [...chosen].join(', ') : '', correct: keys.join(', '), isCorrect: ok,
+            given: i === 0 ? [...chosen].join(', ') : '', correct: keys.join(', '), accepted: [q.answer[0]], isCorrect: ok,
           })
         })
         continue
@@ -181,7 +181,7 @@ export function scoreObjective(
           group.type === 'completion'
             ? isCompletionCorrect(given, q.answer, group)
             : q.answer.some(a => a.trim().toUpperCase() === given.trim().toUpperCase())
-        items.push({ questionId: q.id, number: q.number, type: group.type, sectionIndex, given, correct: q.answer[0], isCorrect })
+        items.push({ questionId: q.id, number: q.number, type: group.type, sectionIndex, given, correct: q.answer[0], accepted: q.answer, isCorrect })
       }
     }
   })

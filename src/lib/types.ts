@@ -120,6 +120,8 @@ export interface Test {
   variant: Variant
   description?: string
   status: 'draft' | 'published'
+  /** Deleted but kept (hidden) because past attempts still point to it. */
+  deleted?: boolean
   createdAt: number
   updatedAt: number
   listening?: { sections: ListeningSection[] }
@@ -138,6 +140,8 @@ export interface ObjectiveItem {
   type: QuestionType
   given: string
   correct: string
+  /** Answer key at the time of marking, so later edits to the test don't change past reviews. */
+  accepted?: string[]
   isCorrect: boolean
   sectionIndex: number
 }
@@ -233,6 +237,8 @@ export interface ModuleProgress {
   deadline?: number // epoch ms; resume-safe
   submittedAt?: number
   section: number
+  /** Practice: answers were revealed, so they stay locked (survives refresh). */
+  revealed?: boolean
 }
 
 export interface Attempt {

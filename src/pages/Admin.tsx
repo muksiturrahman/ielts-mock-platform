@@ -50,7 +50,7 @@ function validateImported(t: unknown): t is Test {
 }
 
 function Library() {
-  const tests = useDB(d => [...d.tests].sort((a, b) => b.updatedAt - a.updatedAt))
+  const tests = useDB(d => d.tests.filter(t => !t.deleted).sort((a, b) => b.updatedAt - a.updatedAt))
   const seeded = useDB(d => d.seeded)
   const attempts = useDB(d => d.attempts)
   const navigate = useNavigate()

@@ -145,6 +145,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
             )}
             {menu.hl && (
               <>
+                {menu.hl.note && <p className="max-w-64 whitespace-pre-wrap border-b border-slate-100 px-3 py-2 text-slate-600">{menu.hl.note}</p>}
                 <MenuItem icon={<StickyNote size={15} />} onClick={() => { setNoteFor(menu.hl!); setNoteText(menu.hl!.note ?? ''); setMenu(null) }}>{menu.hl.note ? 'Edit note' : 'Add note'}</MenuItem>
                 <MenuItem icon={<Eraser size={15} />} onClick={() => { onChange(highlights.filter(h => h.id !== menu.hl!.id)); setMenu(null) }}>Clear</MenuItem>
               </>

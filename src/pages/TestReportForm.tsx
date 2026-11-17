@@ -1,4 +1,6 @@
 import { Download } from 'lucide-react'
+import { useEffect } from 'react'
+import { applyTheme } from '../lib/theme'
 import { Button, fmtBand } from '../components/ui'
 import { attemptOverall, moduleBands } from '../lib/attempts'
 import { useDB } from '../lib/store'
@@ -8,6 +10,13 @@ const CEFR = (b?: number) => (b === undefined ? '–' : b >= 8.5 ? 'C2' : b >= 7
 
 /** Official-style Test Report Form. Printing (Save as PDF) gives the downloadable TRF. */
 export function TestReportForm({ attempt }: { attempt: Attempt }) {
+  // The report is printed on paper: drop the dark theme while printing.
+  useEffect(() => {
+    const light = () => document.documentElement.classList.remove('dark')
+    window.addEventListener('beforeprint', light)
+    window.addEventListener('afterprint', applyTheme)
+    return () => { window.removeEventListener('beforeprint', light); window.removeEventListener('afterprint', applyTheme) }
+  }, [])
   const p = useDB(d => d.profile)
   const b = moduleBands(attempt)
   const overall = attemptOverall(attempt)

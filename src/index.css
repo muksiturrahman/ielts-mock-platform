@@ -47,6 +47,10 @@ body {
   background-size: 200% 100%;
   @apply animate-shimmer rounded-lg;
 }
+.dark .skeleton { background-image: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%) }
+/* Chart tooltips render with inline white styles. */
+.dark .recharts-default-tooltip { background-color: #111827 !important; border-color: #334155 !important; color: #e2e8f0 }
+.dark .recharts-tooltip-label { color: #e2e8f0 }
 .scroll-thin { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent }
 .input {
   @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100;
@@ -113,7 +117,7 @@ body {
   font-size: calc(16px * var(--exam-scale, 1));
 }
 /* Dark app theme: the exam's standard mode becomes a calm dark palette (yellow/white-on-black stay official). */
-.dark .exam[data-contrast='standard'] {
+.dark .exam:not([data-contrast='yellow-black']):not([data-contrast='white-black']) {
   --exam-bg: #0f172a; --exam-fg: #e5e7eb; --exam-muted: #1e293b; --exam-line: #334155; --exam-accent: #818cf8;
 }
 .exam[data-contrast='yellow-black'] {

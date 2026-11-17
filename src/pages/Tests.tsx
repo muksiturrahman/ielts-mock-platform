@@ -13,7 +13,7 @@ export const MODULE_TONE: Record<ModuleKey, string> = {
 }
 
 export default function Tests() {
-  const tests = useDB(d => d.tests.filter(t => t.status === 'published'))
+  const tests = useDB(d => d.tests.filter(t => t.status === 'published' && !t.deleted))
   const [filter, setFilter] = useState<'all' | 'academic' | 'general'>('all')
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Test>()

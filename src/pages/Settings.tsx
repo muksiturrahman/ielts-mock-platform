@@ -4,6 +4,7 @@ import { Button, Card, PageHeader, useToast } from '../components/ui'
 import { ensureSeeded } from '../data/seed'
 import { AISection } from './AISettings'
 import { speak } from '../lib/speech'
+import { exportAllMedia, importAllMedia } from '../lib/media'
 import { exportBackup, importBackup, resetAll, setProfile, setSettings, useDB } from '../lib/store'
 
 
@@ -67,11 +68,11 @@ export default function Settings() {
         <label><span className="label">Examiner name (for reviews)</span><input className="input" value={settings.examinerName} onChange={e => setSettings({ examinerName: e.target.value })} /></label>
       </Section>
 
-      <Section icon={<Database size={18} />} title="Data" delay={0.15} desc="Back up tests, attempts and settings to a file, or move them to another browser. Recordings and uploaded media stay in this browser.">
+      <Section icon={<Database size={18} />} title="Data" delay={0.15} desc="Back up tests, results, recordings and settings to a file, or move them to another browser. API keys are not included in the file.">
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => {
+          <Button variant="secondary" onClick={async () => {
             const a = document.createElement('a')
-            a.href = URL.createObjectURL(new Blob([exportBackup()], { type: 'application/json' }))
+            a.href = URL.createObjectURL(new Blob([exportBackup(await exportAllMedia().catch(() => ({})))], { type: 'application/json' }))
             a.download = `bandready-backup-${new Date().toISOString().slice(0, 10)}.json`
             a.click()
           }}><Download size={16} /> Download backup</Button>
@@ -80,7 +81,8 @@ export default function Settings() {
           <input ref={fileRef} type="file" hidden accept="application/json" onChange={async e => {
             const f = e.target.files?.[0]
             if (!f) return
-            try { importBackup(await f.text()); toast('Backup restored', 'success') } catch (err) { toast(`Restore failed: ${(err as Error).message}`, 'error') }
+            if (!confirm('Restoring replaces all tests, results and settings in this browser with the backup. Continue?')) { e.target.value = ''; return }
+            try { await importAllMedia(importBackup(await f.text())); toast('Backup restored', 'success') } catch (err) { toast(`Restore failed: ${(err as Error).message}`, 'error') }
             e.target.value = ''
           }} />
         </div>

@@ -49,7 +49,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
   const [previewUntil, setPreviewUntil] = useState<number>()
   const skipPreview = useRef<() => void>(null)
   const [current, setCurrent] = useState<number>()
-  const [review, setReview] = useState(false)
+  const review = Boolean(progress.revealed)
   const now = useNow()
   const abortRef = useRef<AbortController>(null)
 
@@ -170,7 +170,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
           {attempt.mode === 'practice' && progress.section === -1 && (
             <>
               <button onClick={() => { stopSpeaking(); void run(0) }} className="flex items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70"><RotateCcw size={14} /> Replay</button>
-              <button onClick={() => setReview(true)} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">{review ? 'Answers shown · locked' : 'Check answers'}</button>
+              <button onClick={() => patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, revealed: true } } }))} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">{review ? 'Answers shown · locked' : 'Check answers'}</button>
             </>
           )}
           <SubmitButton unanswered={unanswered} onSubmit={() => { abortRef.current?.abort(); stopSpeaking(); onSubmit() }} />

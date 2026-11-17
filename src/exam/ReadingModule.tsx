@@ -23,8 +23,8 @@ export default function ReadingModule({ test, attempt, onSubmit, setAnswer, togg
   const parts = sections.map(s => partNav(s.groups, attempt.answers, attempt.flags, s.title))
   const unanswered = parts.flatMap(p => p.numbers).filter(n => !n.answered).length
   const section = sections[part]
+  const review = Boolean(progress.revealed)
   // Practice mode: instant answer checking with explanations.
-  const [review, setReview] = useState(false)
 
   const goTo = (n: number) => {
     const p = parts.findIndex(x => x.numbers.some(y => y.n === n))
@@ -61,7 +61,7 @@ export default function ReadingModule({ test, attempt, onSubmit, setAnswer, togg
       <QuestionNav parts={parts} current={part} onPart={setPart} onJump={goTo} currentNumber={current} onPrev={() => step(-1)} onNext={() => step(1)}
         action={<>
           {attempt.mode === 'practice' && (
-            <button onClick={() => setReview(true)} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">
+            <button onClick={() => patchAttempt(attempt.id, a => ({ progress: { ...a.progress, reading: { ...a.progress.reading, revealed: true } } }))} disabled={review} title="Shows the answers and locks yours" className="whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold exam-line hover:opacity-70 disabled:opacity-50">
               {review ? 'Answers shown · locked' : 'Check answers'}
             </button>
           )}

@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { RichContent, SvgFigure } from '../components/RichContent'
 import { resolveMediaUrl } from '../lib/media'
 import { isCompletionCorrect } from '../lib/scoring'
-import type { AnswerValue, Question, QuestionGroup } from '../lib/types'
+import type { AnswerValue, ObjectiveItem, Question, QuestionGroup } from '../lib/types'
 
 export interface GroupProps {
   group: QuestionGroup
@@ -16,6 +16,8 @@ export interface GroupProps {
   /** Practice review: show right/wrong + explanation */
   review?: boolean
   readOnly?: boolean
+  /** Stored marks of a finished attempt — review uses these, not the (possibly edited) current answer key. */
+  marks?: Record<string, ObjectiveItem>
 }
 
 const TFNG = ['TRUE', 'FALSE', 'NOT GIVEN']
@@ -35,12 +37,12 @@ function isRight(g: QuestionGroup, q: Question, answers: Record<string, AnswerVa
   return q.answer.some(a => a.toUpperCase() === given.toUpperCase())
 }
 
-function Feedback({ ok, q, given }: { ok: boolean; q: Question; given: string }) {
+function Feedback({ ok, q, given, answer }: { ok: boolean; q: Question; given: string; answer: string[] }) {
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className={`mt-2 rounded-lg border px-3 py-2 text-sm ${ok ? 'border-emerald-300 bg-emerald-50 text-emerald-900' : 'border-rose-300 bg-rose-50 text-rose-900'}`}>
       <div className="flex items-center gap-1.5 font-semibold">
         {ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-        {ok ? 'Correct' : `Correct answer: ${q.answer.join(' / ')}`}
+        {ok ? 'Correct' : `Correct answer: ${answer.join(' / ')}`}
       </div>
       {!ok && <div className="mt-0.5">Your answer: {given ? <b>{given}</b> : <i>no answer</i>}</div>}
       {q.explanation && <p className="mt-1 opacity-90">{q.explanation}</p>}
@@ -65,8 +67,10 @@ export function Img({ src }: { src: string }) {
   return url ? <img src={url} alt="" className="mx-auto my-3 max-h-96 rounded border exam-line" /> : null
 }
 
-export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleFlag, onFocusQuestion, review, readOnly }: GroupProps) {
+export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleFlag, onFocusQuestion, review, readOnly, marks }: GroupProps) {
   const byNumber = new Map(g.questions.map(q => [q.number, q]))
+  const keyOf = (q: Question) => marks?.[q.id]?.accepted ?? q.answer
+  const right = (q: Question) => marks?.[q.id]?.isCorrect ?? isRight(g, q, answers)
   const disabled = readOnly || review
 
   const text = (q: Question) => (
@@ -98,7 +102,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
       <span className="inline-flex items-center">
         {g.type === 'matching' ? select(q) : text(q)}
         {!readOnly && <FlagBtn ids={[q.id]} flags={flags} toggle={toggleFlag} className="ml-0.5" />}
-        {review && (isRight(g, q, answers) ? <CheckCircle2 size={16} className="text-emerald-500" /> : <span className="text-xs font-semibold text-rose-500">✗ {q.answer[0]}</span>)}
+        {review && (right(q) ? <CheckCircle2 size={16} className="text-emerald-500" /> : <span className="text-xs font-semibold text-rose-500">✗ {keyOf(q)[0]}</span>)}
       </span>
     )
   }
@@ -113,7 +117,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
         <div className="mt-2 space-y-1.5">
           {(g.options ?? []).map(o => {
             const on = chosen.includes(o.key)
-            const correct = review && g.questions.some(q => q.answer[0] === o.key)
+            const correct = review && g.questions.some(q => keyOf(q)[0] === o.key)
             return (
               <label key={o.key} className={`flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition exam-line ${on ? 'exam-muted font-medium' : ''} ${correct ? 'ring-2 ring-emerald-400' : ''}`}>
                 <input type="checkbox" disabled={disabled || (!on && chosen.length >= max)} checked={on} className="mt-1"
@@ -172,7 +176,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
                     ))}
                   </div>
                 )}
-                {review && <div className="ml-8"><Feedback ok={isRight(g, q, answers)} q={q} given={String(answers[q.id] ?? '')} /></div>}
+                {review && <div className="ml-8"><Feedback ok={right(q)} q={q} answer={keyOf(q)} given={String(answers[q.id] ?? '')} /></div>}
               </div>
             )
           })}
@@ -190,7 +194,7 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
       {body}
       {review && g.type === 'mcq_multi' && (
         <p className="mt-2 text-sm">
-          Correct: <b>{g.questions.map(q => q.answer[0]).join(', ')}</b>
+          Correct: <b>{g.questions.map(q => keyOf(q)[0]).join(', ')}</b>
           {g.questions[0].explanation && <span className="opacity-80"> — {g.questions[0].explanation}</span>}
         </p>
       )}

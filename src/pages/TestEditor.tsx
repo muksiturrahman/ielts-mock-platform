@@ -274,7 +274,7 @@ function GroupEditor({ g, upd, remove }: { g: QuestionGroup; upd: (g: QuestionGr
         <button aria-label="Remove group" className="rounded-lg p-2 text-rose-500 hover:bg-rose-50" onClick={() => confirm('Remove this question group?') && remove()}><Trash2 size={15} /></button>
       </div>
       {preview ? (
-        <div className="exam rounded-xl border bg-white p-5">
+        <div className="exam rounded-xl border p-5">
           <QuestionGroupView group={g} answers={{}} setAnswer={() => {}} flags={[]} toggleFlag={() => {}} readOnly />
         </div>
       ) : (
@@ -358,7 +358,7 @@ function WritingTaskEditor({ w, upd }: { w: WritingTask; upd: (w: WritingTask) =
               }} />
               {chartErr && <p className="mt-1 text-xs text-rose-500">{chartErr}</p>}
             </div>
-            <div className="exam rounded-xl border bg-white p-4">{w.chart ? <TaskChart chart={w.chart} /> : <p className="text-sm opacity-50">Chart preview</p>}</div>
+            <div className="exam rounded-xl border p-4">{w.chart ? <TaskChart chart={w.chart} /> : <p className="text-sm opacity-50">Chart preview</p>}</div>
           </div>
           <Area label="Or an inline SVG (process diagram / map)" value={w.svg ?? ''} onChange={v => upd({ ...w, svg: v || undefined })} rows={4} mono />
           <MediaField kind="image" value={w.image} onChange={v => upd({ ...w, image: v })} />

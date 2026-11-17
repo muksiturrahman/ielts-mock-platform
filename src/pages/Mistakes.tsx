@@ -135,7 +135,7 @@ function MistakeCard({ m, index }: { m: Mistake; index: number }) {
           <div className="font-medium text-slate-800">{questionText(q) || `Question ${m.item.number}`}</div>
           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
             <span className="text-slate-500">You: <b className={m.item.given ? 'text-rose-600 line-through decoration-rose-300' : 'italic text-slate-400'}>{m.item.given || 'no answer'}</b></span>
-            <span className="text-slate-500">Correct: <b className="text-emerald-600">{q?.question.answer.join(' / ') ?? m.item.correct}</b></span>
+            <span className="text-slate-500">Correct: <b className="text-emerald-600">{(m.item.accepted ?? q?.question.answer)?.join(' / ') ?? m.item.correct}</b></span>
           </div>
         </div>
         <motion.span animate={{ rotate: open ? 90 : 0 }} className="mt-2 text-slate-300"><ArrowRight size={16} /></motion.span>
