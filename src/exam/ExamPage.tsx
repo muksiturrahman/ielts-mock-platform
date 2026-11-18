@@ -157,9 +157,9 @@ export default function ExamPage() {
 
       <AnimatePresence>
         {warning && (
-          <Overlay>
+          <Overlay labelId="ov-left">
             <AlertTriangle className="mx-auto mb-3 text-amber-500" size={40} />
-            <h2 className="mb-2 text-xl font-bold">You left the test window</h2>
+            <h2 id="ov-left" className="mb-2 text-xl font-bold">You left the test window</h2>
             <p className="mb-5 text-sm text-slate-600">
               Leaving the test screen is not allowed in the real exam and has been recorded ({attempt.tabSwitches} time{attempt.tabSwitches === 1 ? '' : 's'}). Your timer kept running.
             </p>
@@ -167,8 +167,8 @@ export default function ExamPage() {
           </Overlay>
         )}
         {confirmExit && (
-          <Overlay>
-            <h2 className="mb-2 text-xl font-bold">Leave the test?</h2>
+          <Overlay labelId="ov-exit">
+            <h2 id="ov-exit" className="mb-2 text-xl font-bold">Leave the test?</h2>
             <p className="mb-5 text-sm text-slate-600">Your answers are saved. You can resume from <b>My results</b>, but timed modules keep counting down.</p>
             <div className="flex justify-center gap-2">
               <button className="rounded-md border px-5 py-2" onClick={() => setConfirmExit(false)}>Stay</button>
@@ -181,11 +181,11 @@ export default function ExamPage() {
   )
 }
 
-function Overlay({ children }: { children: React.ReactNode }) {
+function Overlay({ labelId, children }: { labelId: string; children: React.ReactNode }) {
   const ref = useDialogFocus<HTMLDivElement>(true)
   return (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div ref={ref} role="dialog" aria-modal="true" tabIndex={-1} initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-md rounded-xl bg-white p-6 text-center outline-none text-slate-900 shadow-2xl">
+      <motion.div ref={ref} role="dialog" aria-modal="true" aria-labelledby={labelId} tabIndex={-1} initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-md rounded-xl bg-white p-6 text-center outline-none text-slate-900 shadow-2xl">
         {children}
       </motion.div>
     </motion.div>

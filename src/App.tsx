@@ -139,6 +139,12 @@ export default function App() {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
   const navRef = useDialogFocus<HTMLElement>(mobileOpen, () => setMobileOpen(false))
+  useEffect(() => {
+    const wide = matchMedia('(min-width: 1024px)') // lg: the menu is hidden, so its focus trap must end
+    const close = () => wide.matches && setMobileOpen(false)
+    wide.addEventListener('change', close)
+    return () => wide.removeEventListener('change', close)
+  }, [])
   const theme = useDB(d => d.settings.theme)
   useEffect(applyTheme, [theme])
 

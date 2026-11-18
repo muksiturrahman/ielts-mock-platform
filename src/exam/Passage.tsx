@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Eraser, Highlighter, StickyNote } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Highlight } from '../lib/types'
+import { useDialogFocus } from '../components/ui'
 
 interface Props {
   title?: string
@@ -71,6 +72,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number; sel?: { paragraph: number; start: number; end: number }; hl?: Highlight } | null>(null)
   const [noteFor, setNoteFor] = useState<Highlight | null>(null)
   const [noteText, setNoteText] = useState('')
+  const noteRef = useDialogFocus<HTMLDivElement>(!!noteFor, () => setNoteFor(null))
 
   useEffect(() => {
     const close = () => setMenu(null)
@@ -97,7 +99,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
 
   // Touch screens have no right-click: open the menu under a finished text selection instead.
   useEffect(() => {
-    if (!matchMedia('(pointer: coarse)').matches) return
+    if (!matchMedia('(any-pointer: coarse)').matches) return // touch laptops report a fine primary pointer
     let t = 0
     const onSel = () => {
       clearTimeout(t)
@@ -105,7 +107,8 @@ export function Passage({ title, text, highlights, onChange }: Props) {
         const sel = currentSelection()
         if (!sel) return
         const r = window.getSelection()!.getRangeAt(0).getBoundingClientRect()
-        setMenu({ x: r.left, y: r.bottom + 12, sel })
+        // Below the selection, or above it when there's no room underneath.
+        setMenu({ x: r.left, y: r.bottom + 160 < innerHeight ? r.bottom + 12 : Math.max(8, r.top - 160), sel })
       }, 450)
     }
     document.addEventListener('selectionchange', onSel)
@@ -171,8 +174,8 @@ export function Passage({ title, text, highlights, onChange }: Props) {
           </motion.div>
         )}
         {noteFor && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="fixed bottom-24 left-1/2 z-50 w-80 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 shadow-2xl">
+          <motion.div ref={noteRef} role="dialog" aria-label="Note" tabIndex={-1} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="fixed bottom-24 left-1/2 z-50 w-80 max-w-[calc(100vw-2rem)] outline-none -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 shadow-2xl">
             <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Note</div>
             <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} className="h-24 w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:border-brand-500" />
             <div className="mt-2 flex justify-end gap-2">

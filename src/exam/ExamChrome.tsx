@@ -41,6 +41,15 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
   const [open, setOpen] = useState(false)
   const settings = useDB(d => d.settings)
   const low = remaining !== undefined && remaining < 5 * 60_000
+  const settingsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const out = (e: PointerEvent) => !settingsRef.current?.contains(e.target as Node) && setOpen(false)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('pointerdown', out)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('pointerdown', out); document.removeEventListener('keydown', esc) }
+  }, [open])
   return (
     <header className="relative z-20 flex h-14 shrink-0 items-center gap-4 border-b px-4 exam-line exam-panel">
       <div className="flex items-center gap-3">
@@ -68,8 +77,8 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
           </label>
         )}
         <Wifi size={16} className="hidden opacity-50 sm:block" aria-label="Connected" />
-        <div className="relative">
-          <button onClick={() => setOpen(o => !o)} className="rounded-md p-1.5 transition hover:opacity-70" aria-label="Display settings"><Settings2 size={18} /></button>
+        <div className="relative" ref={settingsRef}>
+          <button onClick={() => setOpen(o => !o)} className="rounded-md p-1.5 transition hover:opacity-70" aria-label="Display settings" aria-expanded={open}><Settings2 size={18} /></button>
           <AnimatePresence>
             {open && (
               <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}

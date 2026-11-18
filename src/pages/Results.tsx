@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, ArrowLeft, CheckCircle2, Download, KeyRound, Loader2, Play, RefreshCw, Sparkles, XCircle } from 'lucide-react'
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useId, useState, type ReactNode } from 'react'
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { ExamReview } from '../components/ExamReview'
 import { questionText, locateQuestion } from '../lib/review'
@@ -259,6 +259,7 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
 
 /** Highlights each annotation's quote inside the candidate's text. */
 function Annotated({ text, notes }: { text: string; notes: { quote: string; label: string; detail: string; tone: string }[] }) {
+  const uid = useId()
   const lower = text.toLowerCase()
   const spans: { s: number; e: number; n: (typeof notes)[number] }[] = []
   for (const n of notes) {
@@ -273,9 +274,9 @@ function Annotated({ text, notes }: { text: string; notes: { quote: string; labe
   spans.forEach((sp, i) => {
     out.push(text.slice(pos, sp.s))
     out.push(
-      <span key={i} tabIndex={0} className={cx('group relative cursor-help rounded outline-none focus-visible:ring-2 focus-visible:ring-brand-400 px-0.5 underline decoration-2 underline-offset-4', sp.n.tone)}>
+      <span key={i} tabIndex={0} aria-describedby={`${uid}-${i}`} onMouseEnter={keepOnScreen} onFocus={keepOnScreen} className={cx('group relative cursor-help rounded outline-none focus-visible:ring-2 focus-visible:ring-brand-400 px-0.5 underline decoration-2 underline-offset-4', sp.n.tone)}>
         {text.slice(sp.s, sp.e)}
-        <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden w-64 max-w-[75vw] rounded-xl bg-slate-900 p-3 text-xs leading-relaxed text-white shadow-xl group-hover:block group-focus:block">
+        <span id={`${uid}-${i}`} role="tooltip" className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden w-64 max-w-[75vw] rounded-xl bg-slate-900 p-3 text-xs leading-relaxed text-white shadow-xl group-hover:block group-focus:block">
           <b className="uppercase">{sp.n.label}</b><br />{sp.n.detail}
         </span>
       </span>,
@@ -284,6 +285,15 @@ function Annotated({ text, notes }: { text: string; notes: { quote: string; labe
   })
   out.push(text.slice(pos))
   return <div className="whitespace-pre-wrap leading-8 text-slate-700">{out}</div>
+}
+
+/** Shift a note's tooltip left so it doesn't run off the right edge of a phone screen. */
+function keepOnScreen(e: React.SyntheticEvent<HTMLElement>) {
+  const tip = e.currentTarget.querySelector<HTMLElement>('[role=tooltip]')
+  if (!tip) return
+  const left = e.currentTarget.getBoundingClientRect().left
+  const width = Math.min(256, innerWidth * 0.75)
+  tip.style.left = `${Math.max(8 - left, Math.min(0, innerWidth - 8 - width - left))}px`
 }
 
 const TONE: Record<string, string> = {
