@@ -32,7 +32,7 @@ All data stays in your browser.
 - **History filters:** by mode (full mock or practice) and by module, with right/total counts per attempt.
 - **Dark theme:** Light, Dark or System, from the sidebar.
 - **Modes:** full mock (all modules in a row) or practice per module or part, timed or untimed, with instant answer checking and explanations.
-- **Test Report Form:** printable to PDF, in the official style.
+- **Score report:** a printable one-page summary (bands, CEFR level, comments). It is clearly marked as a practice result and deliberately does not copy the official IELTS form.
 - **Examiner mode:** override any AI criterion band and leave feedback; the candidate's scores update.
 - **Admin:** a test builder for every question type, audio and image upload, a bulk **CSV question importer**, a raw JSON editor, publishing checks, JSON import and export, analytics (hardest questions), and editable rubric prompts.
 - **Backup:** back up and restore everything to a JSON file.
@@ -52,7 +52,7 @@ Open **Settings → AI marking**, pick a provider, paste a key, then click **Tes
 | **OpenAI** | Paid | — |
 
 Keys are stored only in your browser and are sent only to the provider you picked. Each provider's key is remembered, so if one free tier hits its daily limit you can switch to another.
-Leave **Model** empty to get the recommended default, or click **Load** to choose from the models your key can use.
+Leave **Model** on **Automatic** (recommended): the app tests the best models your key can use, picks one that answers, and switches by itself if it gets busy. Or pick a fixed model from the list.
 Without a key, Listening and Reading are still fully marked, and Writing and Speaking wait with a **Mark now** button.
 
 Use **Chrome or Edge** for Speaking: live transcription relies on the Web Speech API.
@@ -80,13 +80,13 @@ src/
   lib/          types, scoring (+ tests), store, media (IndexedDB), ai (all providers), speech, attempts, analytics, csv
   data/seed/    original test content + integrity tests
   exam/         exam runner: chrome, passage, question renderer, 4 modules
-  pages/        dashboard, tests, results, TRF, history, examiner, admin, test editor, settings
+  pages/        dashboard, tests, results, score report, history, examiner, admin, test editor, settings
   components/   UI kit, rich content renderer, Task 1 charts
 ```
 
 ## Limits
 
-- Data lives in one browser. Use **Settings → Download backup** to move it, and recordings stay on the device where they were made.
+- Data lives in one browser. **Settings → Download backup** saves everything except API keys (tests, results, Speaking recordings and uploaded media) to one file you can restore in another browser.
 - There are no user accounts. Student, examiner and admin are pages of the same app, built for self-study or a single teacher. Multi-user use would need a backend.
 - The pronunciation band is estimated from recognition quality and fluency, because the AI reads transcripts rather than listening to the audio.
 - Free AI tiers have daily limits that the providers change from time to time. Free models also mark less consistently than Claude.

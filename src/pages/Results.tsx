@@ -71,7 +71,7 @@ export default function Results() {
         {tabs.map(t => (
           <button key={t} onClick={() => setTab(t)} className={cx('relative whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold capitalize transition', tab === t ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
             {tab === t && <motion.span layoutId="result-tab" className="absolute inset-0 rounded-xl bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
-            <span className="relative">{t === 'report' ? 'Test Report Form' : t}</span>
+            <span className="relative">{t === 'report' ? 'Score report' : t}</span>
           </button>
         ))}
       </div>

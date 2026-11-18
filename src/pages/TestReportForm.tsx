@@ -8,7 +8,7 @@ import type { Attempt } from '../lib/types'
 
 const CEFR = (b?: number) => (b === undefined ? '–' : b >= 8.5 ? 'C2' : b >= 7 ? 'C1' : b >= 5.5 ? 'B2' : b >= 4 ? 'B1' : 'A2')
 
-/** Official-style Test Report Form. Printing (Save as PDF) gives the downloadable TRF. */
+/** BandReady score report (a practice summary, not the official form). Printing (Save as PDF) downloads it. */
 export function TestReportForm({ attempt }: { attempt: Attempt }) {
   // The report is printed on paper: drop the dark theme while printing.
   useEffect(() => {
@@ -36,20 +36,21 @@ export function TestReportForm({ attempt }: { attempt: Attempt }) {
         <Button variant="dark" onClick={() => window.print()}><Download size={16} /> Download PDF</Button>
       </div>
       <div className="print-page mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
-        <div className="flex items-start justify-between border-b-4 border-[#e11d2e] pb-4">
+        {/* Deliberately not the official form's look (no IELTS mark, centre number or "Test Report Form"):
+            a printed practice report must never pass as a real result. */}
+        <div className="flex items-start justify-between border-b-4 border-brand-600 pb-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{attempt.variant === 'academic' ? 'Academic' : 'General Training'}</div>
-            <h1 className="font-display text-2xl font-extrabold text-slate-900">Test Report Form</h1>
-            <div className="text-xs text-slate-500">BandReady practice result — not an official IELTS certificate</div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">{attempt.variant === 'academic' ? 'Academic' : 'General Training'} practice test</div>
+            <h1 className="font-display text-2xl font-extrabold text-slate-900">BandReady Score Report</h1>
+            <div className="text-xs font-semibold text-slate-600">Practice result — not an official IELTS score and not valid for any application</div>
           </div>
-          <span className="rounded bg-[#e11d2e] px-3 py-1 text-lg font-black tracking-wide text-white">IELTS</span>
+          <span className="rounded bg-brand-600 px-3 py-1 text-lg font-black tracking-wide text-white">BandReady</span>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-x-8">
-          <Field label="Centre number" value="BR001" />
-          <Field label="Test date" value={date} />
+          <Field label="Practice date" value={date} />
           <Field label="Candidate name" value={p.name} />
-          <Field label="Candidate number" value={p.candidateId} />
+          <Field label="Candidate ID (self-chosen)" value={p.candidateId} />
           <Field label="Date of birth" value={p.dob} />
           <Field label="Country or region of origin" value={p.nationality} />
           <Field label="First language" value={p.firstLanguage} />
@@ -73,17 +74,36 @@ export function TestReportForm({ attempt }: { attempt: Attempt }) {
 
         <div className="mt-8 grid grid-cols-2 gap-6 text-xs text-slate-600">
           <div>
-            <div className="mb-1 font-semibold uppercase text-slate-500">Administrator comments</div>
-            <p>{attempt.review?.feedback ? attempt.review.feedback.slice(0, 280) : attempt.tabSwitches ? `Candidate left the test window ${attempt.tabSwitches} time(s).` : 'No comments.'}</p>
+            <div className="mb-1 font-semibold uppercase text-slate-500">Comments</div>
+            <p>{attempt.review?.feedback ? clip(attempt.review.feedback, 280) : attempt.tabSwitches ? `Candidate left the test window ${attempt.tabSwitches} time(s).` : 'No comments.'}</p>
           </div>
           <div className="text-right">
-            <div className="mb-1 font-semibold uppercase text-slate-500">Test report form number</div>
+            <div className="mb-1 font-semibold uppercase text-slate-500">Report reference</div>
             <div className="font-mono text-sm font-bold text-slate-900">{ref}</div>
             <div className="mt-4 font-semibold uppercase text-slate-500">Marking</div>
-            <div>{attempt.review ? `Examiner reviewed (${attempt.review.examiner})` : 'Listening/Reading auto-marked · Writing/Speaking AI-marked'}</div>
+            <div>{markingLine(attempt)}</div>
           </div>
         </div>
       </div>
     </div>
   )
+}
+
+const hasMark = (o: unknown): boolean => typeof o === 'number' || (!!o && typeof o === 'object' && Object.values(o).some(hasMark))
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
+
+/** How each module was actually marked — never claims AI marking that failed or didn't happen. */
+function markingLine(a: Attempt): string {
+  const parts: string[] = []
+  const auto = (['listening', 'reading'] as const).filter(m => a.results[m])
+  if (auto.length) parts.push(`${auto.map(m => m[0].toUpperCase() + m.slice(1)).join('/')} auto-marked`)
+  for (const m of ['writing', 'speaking'] as const) {
+    if (!a.modules.includes(m)) continue
+    const name = m[0].toUpperCase() + m.slice(1)
+    const examiner = m === 'writing' ? a.review?.writing : a.review?.speaking
+    if (hasMark(examiner)) parts.push(`${name} examiner-marked (${a.review!.examiner})`)
+    else if (a.results[m]?.status === 'done') parts.push(`${name} AI-marked`)
+    else parts.push(`${name} not marked`)
+  }
+  return parts.join(' · ') || 'Not marked'
 }

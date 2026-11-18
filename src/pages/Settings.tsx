@@ -31,7 +31,7 @@ export default function Settings() {
 
       <AISection />
 
-      <Section icon={<User size={18} />} title="Candidate profile" delay={0.05} desc="Shown in the exam header and printed on your Test Report Form.">
+      <Section icon={<User size={18} />} title="Candidate profile" delay={0.05} desc="Shown in the exam header and printed on your score report.">
         <div className="grid gap-4 sm:grid-cols-2">
           {([['name', 'Full name'], ['candidateId', 'Candidate number'], ['dob', 'Date of birth'], ['nationality', 'Country / region'], ['firstLanguage', 'First language']] as const).map(([k, l]) => (
             <label key={k}><span className="label">{l}</span><input className="input" type={k === 'dob' ? 'date' : 'text'} value={profile[k]} onChange={e => setProfile({ [k]: e.target.value })} /></label>
