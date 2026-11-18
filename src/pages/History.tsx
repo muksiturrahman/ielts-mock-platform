@@ -19,9 +19,9 @@ export default function HistoryPage() {
       <PageHeader title="My results" subtitle="Every attempt, with full feedback. In-progress tests can be resumed." />
       {all.length > 0 && (
         <div className="mb-5 flex flex-wrap gap-2">
-          {(['all', 'full', 'practice'] as const).map(m => <button key={m} onClick={() => setMode(m)} className={chip(mode === m)}>{m === 'all' ? 'All modes' : m === 'full' ? 'Full mocks' : 'Practice'}</button>)}
+          {(['all', 'full', 'practice'] as const).map(m => <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)} className={chip(mode === m)}>{m === 'all' ? 'All modes' : m === 'full' ? 'Full mocks' : 'Practice'}</button>)}
           <span className="mx-1 w-px bg-slate-200" />
-          {(['all', 'listening', 'reading', 'writing', 'speaking'] as const).map(m => <button key={m} onClick={() => setMod(m)} className={chip(mod === m)}>{m === 'all' ? 'All modules' : MODULE_LABEL[m]}</button>)}
+          {(['all', 'listening', 'reading', 'writing', 'speaking'] as const).map(m => <button key={m} aria-pressed={mod === m} onClick={() => setMod(m)} className={chip(mod === m)}>{m === 'all' ? 'All modules' : MODULE_LABEL[m]}</button>)}
         </div>
       )}
       {attempts.length === 0 ? (

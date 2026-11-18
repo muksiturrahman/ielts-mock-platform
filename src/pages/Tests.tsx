@@ -28,7 +28,7 @@ export default function Tests() {
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <div className="flex rounded-xl border border-slate-200 bg-white p-1">
           {(['all', 'academic', 'general'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={cx('relative rounded-lg px-4 py-1.5 text-sm font-semibold capitalize transition', filter === f ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
+            <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)} className={cx('relative rounded-lg px-4 py-1.5 text-sm font-semibold capitalize transition', filter === f ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
               {filter === f && <motion.span layoutId="filter" className="absolute inset-0 rounded-lg bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
               <span className="relative">{f === 'general' ? 'General Training' : f}</span>
             </button>
@@ -109,7 +109,7 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
     <Modal open onClose={onClose} title={test.title}>
       <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
         {(['full', 'practice'] as const).map(m => (
-          <button key={m} disabled={m === 'full' && mods.length < 4} onClick={() => setMode(m)}
+          <button key={m} aria-pressed={mode === m} disabled={m === 'full' && mods.length < 4} onClick={() => setMode(m)}
             className={cx('rounded-xl py-2.5 text-sm font-semibold transition disabled:opacity-40', mode === m ? 'bg-white text-slate-900 shadow' : 'text-slate-500')}>
             {m === 'full' ? 'Full mock exam' : 'Practice'}
           </button>
@@ -138,7 +138,7 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
               {mods.map(m => {
                 const Icon = MODULE_ICON[m]
                 return (
-                  <button key={m} onClick={() => { setModule(m); setSections(undefined) }}
+                  <button key={m} aria-pressed={module === m} onClick={() => { setModule(m); setSections(undefined) }}
                     className={cx('flex items-center gap-2 rounded-xl border p-3 text-left text-sm font-semibold transition', module === m ? 'border-brand-500 bg-brand-50 text-brand-700 ring-4 ring-brand-100' : 'border-slate-200 hover:border-slate-300')}>
                     <Icon size={16} /> {MODULE_LABEL[m]}
                   </button>
@@ -150,9 +150,9 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
             <div>
               <div className="label">Part</div>
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setSections(undefined)} className={cx('rounded-lg border px-3 py-1.5 text-sm font-medium', !sections ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200')}>All</button>
+                <button aria-pressed={!sections} onClick={() => setSections(undefined)} className={cx('rounded-lg border px-3 py-1.5 text-sm font-medium', !sections ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200')}>All</button>
                 {partOptions.map(p => (
-                  <button key={p.value} onClick={() => setSections([p.value])} className={cx('rounded-lg border px-3 py-1.5 text-sm font-medium', sections?.[0] === p.value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200')}>{p.label}</button>
+                  <button key={p.value} aria-pressed={sections?.[0] === p.value} onClick={() => setSections([p.value])} className={cx('rounded-lg border px-3 py-1.5 text-sm font-medium', sections?.[0] === p.value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200')}>{p.label}</button>
                 ))}
               </div>
             </div>

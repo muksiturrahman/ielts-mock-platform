@@ -54,7 +54,7 @@ export default function Mistakes() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         {([['due', `Due for review (${dueTotal})`], ['all', `All (${everything.length})`], ['mastered', `Mastered (${masteredTotal})`]] as const).map(([v, label]) => (
-          <button key={v} onClick={() => setView(v)} className={cx('rounded-full border px-3 py-1 text-sm font-semibold transition', view === v ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')}>{label}</button>
+          <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={cx('rounded-full border px-3 py-1 text-sm font-semibold transition', view === v ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')}>{label}</button>
         ))}
       </div>
 
@@ -86,7 +86,7 @@ export default function Mistakes() {
               {types.length > 1 && (
                 <div className="mb-4 flex flex-wrap gap-2">
                   {['all', ...types].map(t => (
-                    <button key={t} onClick={() => setType(t)} className={cx('rounded-full border px-3 py-1 text-sm font-medium transition', type === t ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')}>
+                    <button key={t} aria-pressed={type === t} onClick={() => setType(t)} className={cx('rounded-full border px-3 py-1 text-sm font-medium transition', type === t ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300')}>
                       {t === 'all' ? `All (${objective.length})` : `${t} (${objective.filter(m => typeLabel(m.item.type) === t).length})`}
                     </button>
                   ))}

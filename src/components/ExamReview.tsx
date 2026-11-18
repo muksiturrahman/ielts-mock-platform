@@ -47,7 +47,7 @@ export function ExamReview({ attempt, test, module, result, focus }: { attempt: 
           const items = result.items.filter(x => x.sectionIndex === i)
           const right = items.filter(x => x.isCorrect).length
           return (
-            <button key={i} onClick={() => setSectionIndex(i)}
+            <button key={i} aria-pressed={i === sectionIndex} onClick={() => setSectionIndex(i)}
               className={cx('whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition', i === sectionIndex ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100')}>
               {sections[i]?.title} <span className="ml-1 opacity-70">{right}/{items.length}</span>
             </button>

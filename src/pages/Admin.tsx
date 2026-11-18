@@ -18,9 +18,9 @@ export default function Admin() {
   return (
     <div>
       <PageHeader title="Admin" subtitle="Build and publish mock tests, review platform analytics and tune the AI rubric." />
-      <div className="mb-6 flex w-fit gap-1 rounded-2xl bg-white p-1 shadow-sm">
+      <div role="tablist" className="mb-6 flex w-fit max-w-full gap-1 overflow-x-auto rounded-2xl bg-white p-1 shadow-sm scroll-thin">
         {([['tests', 'Test library', FileJson], ['analytics', 'Analytics', BarChart3], ['prompts', 'Rubric prompts', SlidersHorizontal]] as const).map(([k, l, Icon]) => (
-          <button key={k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition', tab === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition', tab === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
             {tab === k && <motion.span layoutId="admin-tab" className="absolute inset-0 rounded-xl bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
             <Icon size={15} className="relative" /><span className="relative">{l}</span>
           </button>

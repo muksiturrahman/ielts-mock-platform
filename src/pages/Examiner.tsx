@@ -122,8 +122,8 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
       )}
 
       <Card className="p-6">
-        <label className="label">Examiner feedback to the candidate</label>
-        <textarea className="input h-32" value={review.feedback} onChange={e => setReview(r => ({ ...r, feedback: e.target.value }))} placeholder="Overall comments, priorities for improvement…" />
+        <label className="label" htmlFor="examiner-feedback">Examiner feedback to the candidate</label>
+        <textarea id="examiner-feedback" className="input h-32" value={review.feedback} onChange={e => setReview(r => ({ ...r, feedback: e.target.value }))} placeholder="Overall comments, priorities for improvement…" />
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xs text-slate-400">{attempt.review ? `Last saved by ${attempt.review.examiner}, ${fmtDate(attempt.review.at)}` : 'Leave a criterion on “AI” to keep the AI band.'}</span>
           <Button onClick={save}><Save size={16} /> Save review</Button>

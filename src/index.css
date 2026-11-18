@@ -98,6 +98,14 @@ body {
 .dark .text-slate-800 { color: #e2e8f0 }
 .dark .bg-white, .dark .card, .dark .focus\:bg-white:focus { background-color: #111827 }
 .dark body { color: #e2e8f0 }
+/* slate-900 is the "selected" pill / dark button colour; on dark cards it would vanish, so it becomes indigo. */
+.dark .bg-slate-900:not(.exam *) { background-color: #4f46e5; box-shadow: 0 0 0 1px #a5b4fc } /* outline keeps it ≥3:1 on dark cards */
+.dark .border-slate-900:not(.exam *) { border-color: #4f46e5 }
+.dark .hover\:bg-slate-800:hover:not(.exam *) { background-color: #4338ca }
+/* brand-600 text (#4f46e5) is ~2.8:1 on #111827 — lighter indigo for links in dark mode */
+.dark .text-brand-600 { color: #a5b4fc }
+.dark .toggle-knob { background-color: #f8fafc }
+.dark .recharts-cartesian-grid line, .dark .recharts-polar-grid line, .dark .recharts-polar-grid polygon { stroke: #334155 }
 .dark .input { background-color: #0b1120; color: #e2e8f0 }
 .dark .bg-white\/95 { background-color: rgb(17 24 39 / 0.95) }
 .dark .bg-white\/80 { background-color: rgb(17 24 39 / 0.8) }

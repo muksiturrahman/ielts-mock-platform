@@ -54,7 +54,7 @@ export default function Results() {
             const Icon = MODULE_ICON[m]
             const status = m === 'writing' ? attempt.results.writing?.status : m === 'speaking' ? attempt.results.speaking?.status : attempt.results[m] ? 'done' : undefined
             return (
-              <motion.button key={m} onClick={() => setTab(m)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.06 }}
+              <motion.button key={m} aria-pressed={tab === m} onClick={() => setTab(m)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.06 }}
                 className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3 text-left transition hover:border-brand-200 hover:bg-brand-50/40">
                 <BandRing band={bands[m]} size={64} stroke={6} />
                 <div>
@@ -69,7 +69,7 @@ export default function Results() {
 
       <div className="no-print mb-6 flex gap-1 overflow-x-auto rounded-2xl bg-white p-1 shadow-sm">
         {tabs.map(t => (
-          <button key={t} onClick={() => setTab(t)} className={cx('relative whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold capitalize transition', tab === t ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
+          <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={cx('relative whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold capitalize transition', tab === t ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
             {tab === t && <motion.span layoutId="result-tab" className="absolute inset-0 rounded-xl bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
             <span className="relative">{t === 'report' ? 'Score report' : t}</span>
           </button>
