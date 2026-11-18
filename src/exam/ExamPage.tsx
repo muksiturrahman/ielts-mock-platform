@@ -157,7 +157,7 @@ export default function ExamPage() {
 
       <AnimatePresence>
         {warning && (
-          <Overlay labelId="ov-left">
+          <Overlay key="left" labelId="ov-left">
             <AlertTriangle className="mx-auto mb-3 text-amber-500" size={40} />
             <h2 id="ov-left" className="mb-2 text-xl font-bold">You left the test window</h2>
             <p className="mb-5 text-sm text-slate-600">
@@ -167,7 +167,7 @@ export default function ExamPage() {
           </Overlay>
         )}
         {confirmExit && (
-          <Overlay labelId="ov-exit">
+          <Overlay key="exit" labelId="ov-exit">
             <h2 id="ov-exit" className="mb-2 text-xl font-bold">Leave the test?</h2>
             <p className="mb-5 text-sm text-slate-600">Your answers are saved. You can resume from <b>My results</b>, but timed modules keep counting down.</p>
             <div className="flex justify-center gap-2">

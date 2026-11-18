@@ -151,6 +151,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
       <AnimatePresence>
         {menu && (
           <motion.div
+            key="menu"
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
             style={{ position: 'fixed', left: Math.max(8, Math.min(menu.x, innerWidth - 200)), top: Math.max(8, Math.min(menu.y, innerHeight - 180)) }}
@@ -174,7 +175,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
           </motion.div>
         )}
         {noteFor && (
-          <motion.div ref={noteRef} role="dialog" aria-label="Note" tabIndex={-1} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+          <motion.div key="note" ref={noteRef} role="dialog" aria-label="Note" tabIndex={-1} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="fixed bottom-24 left-1/2 z-50 w-80 max-w-[calc(100vw-2rem)] outline-none -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 text-slate-800 shadow-2xl">
             <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Note</div>
             <textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} className="h-24 w-full rounded-lg border border-slate-200 p-2 text-sm outline-none focus:border-brand-500" />

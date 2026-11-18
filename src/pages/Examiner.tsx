@@ -61,12 +61,6 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
     toast('Review saved — bands updated for the candidate', 'success')
   }
 
-  const BandSelect = ({ ai, value, onChange }: { ai?: number; value?: number; onChange: (v: string) => void }) => (
-    <select value={value ?? ''} onChange={e => onChange(e.target.value)} className="input w-24 py-1.5">
-      <option value="">{ai === undefined ? '—' : `AI ${fmtBand(ai)}`}</option>
-      {BANDS.map(b => <option key={b} value={b}>{fmtBand(b)}</option>)}
-    </select>
-  )
 
   return (
     <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
@@ -142,3 +136,13 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
 const Incomplete = () => (
   <p className="mt-3 text-sm text-amber-600">There's no AI mark to fall back on — set all 4 criteria to give a band.</p>
 )
+
+// Module level, not inside the page: a component defined in render remounts on every change and drops keyboard focus.
+function BandSelect({ ai, value, onChange }: { ai?: number; value?: number; onChange: (v: string) => void }) {
+  return (
+    <select value={value ?? ''} onChange={e => onChange(e.target.value)} className="input w-24 py-1.5">
+      <option value="">{ai === undefined ? '—' : `AI ${fmtBand(ai)}`}</option>
+      {BANDS.map(b => <option key={b} value={b}>{fmtBand(b)}</option>)}
+    </select>
+  )
+}
