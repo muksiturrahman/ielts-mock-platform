@@ -75,6 +75,7 @@ export default function Settings() {
             a.href = URL.createObjectURL(new Blob([exportBackup(await exportAllMedia().catch(() => ({})))], { type: 'application/json' }))
             a.download = `bandready-backup-${new Date().toISOString().slice(0, 10)}.json`
             a.click()
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000)
           }}><Download size={16} /> Download backup</Button>
           <Button variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={16} /> Restore backup</Button>
           <Button variant="danger" onClick={() => { if (confirm('Delete all attempts, custom tests and settings? This cannot be undone.')) { resetAll(); ensureSeeded(); toast('Everything was reset') } }}><RotateCcw size={16} /> Reset everything</Button>

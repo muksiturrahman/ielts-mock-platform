@@ -46,6 +46,10 @@ describe('answer matching', () => {
     expect(normalizeAnswer('recognised')).toBe(normalizeAnswer('recognized'))
     expect(normalizeAnswer('organisations')).toBe(normalizeAnswer('organizations'))
     // -ise words with no -ize form: a "z" spelling is a misspelling
+    expect(normalizeAnswer('privatisation')).toBe(normalizeAnswer('privatization'))
+    expect(normalizeAnswer('criticised')).toBe(normalizeAnswer('criticized'))
+    expect(normalizeAnswer('recognisable')).toBe(normalizeAnswer('recognizable'))
+    expect(normalizeAnswer('analysed')).toBe(normalizeAnswer('analyzed'))
     expect(normalizeAnswer('promize')).not.toBe(normalizeAnswer('promise'))
     expect(normalizeAnswer('exercize')).not.toBe(normalizeAnswer('exercise'))
     expect(normalizeAnswer('expertize')).not.toBe(normalizeAnswer('expertise'))

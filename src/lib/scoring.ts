@@ -75,20 +75,22 @@ const MONTH_RE = MONTHS.join('|')
 
 // Words spelt -ise (UK) or -ize (US). A list, not a rule: "promise", "expertise", "exercise" have no -ize form.
 const ISE_STEMS = new Set((
-  'agon antagon apolog author capital categor central character civil colon commercial computer container '
+  'agon antagon apolog critic digit item mechan public author capital categor central character civil colon commercial computer container '
   + 'criminal custom decentral democrat dramat econom emphas energ equal evangel external familiar fantas fertil '
   + 'final fossil general glamor global harmon hospital hypothes ideal immun individual industrial internal italic '
   + 'jeopard legal legitim liberal local magnet material maxim memor mesmer metabol miniatur minim mobil modern '
   + 'monopol motor national natural neutral normal optim organ ostrac patron penal personal polar popular pressur '
-  + 'priorit private radical random rational real recogn regular revolution sanit satir scandal scrutin sensit '
+  + 'priorit privat radical random rational real recogn regular revolution sanit satir scandal scrutin sensit '
   + 'serial social special spiritual stabil standard steril stigmat strateg subsid summar symbol sympath synchron '
   + 'tempor terror theor trivial tyrann union urban util vandal vapor visual vocal western').split(/\s+/))
 
 function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
   if (SPELLING[w]) return SPELLING[w]
-  const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations|er|ers)$/)
+  const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations|er|ers|able)$/)
   if (ise && ISE_STEMS.has(ise[1])) return `${ise[1]}iz${ise[2]}`
+  const yse = w.match(/^(anal|paral|catal|electrol|dial)ys(e|es|ed|ing|er|ers)$/)
+  if (yse) return `${yse[1]}yz${yse[2]}`
   return w
 }
 

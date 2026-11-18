@@ -38,7 +38,7 @@ function download(name: string, text: string) {
   a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
   a.download = name
   a.click()
-  URL.revokeObjectURL(a.href)
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000) // after the download has started
 }
 
 export function blankTest(variant: Test['variant'] = 'academic'): Test {

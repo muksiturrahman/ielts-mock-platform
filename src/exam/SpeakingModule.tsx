@@ -99,12 +99,25 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   useEffect(() => () => { stream?.getTracks().forEach(t => t.stop()) }, [stream])
   // Leaving mid-test: stop the examiner, the recording and recognition, and stop any pending ask() chain.
   const alive = useRef(true)
-  useEffect(() => () => { alive.current = false; stopSpeaking(); void recRef.current?.stop(); recRef.current = null }, [])
+  const notesRef = useRef(notes)
+  notesRef.current = notes
+  useEffect(() => {
+    alive.current = true // StrictMode re-runs effects: mount → cleanup → mount
+    return () => {
+      alive.current = false
+      stopSpeaking()
+      void recRef.current?.stop()
+      recRef.current = null
+      patchAttempt(attempt.id, a => (a.scratchpad === notesRef.current ? {} : { scratchpad: notesRef.current }))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Part 2 notes survive a refresh or exit.
   useEffect(() => {
     if (notes === attempt.scratchpad) return
     const t = setTimeout(() => patchAttempt(attempt.id, { scratchpad: notes }), 800)
-    return () => clearTimeout(t)
+    const flush = () => patchAttempt(attempt.id, { scratchpad: notesRef.current })
+    window.addEventListener('pagehide', flush)
+    return () => { clearTimeout(t); window.removeEventListener('pagehide', flush) }
   }, [notes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mic check level meter
@@ -123,6 +136,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   }
 
   const ask = async (i: number, v = voice) => {
+    if (!alive.current) return
     const s = steps[i]
     if (!s) return finish()
     setIndex(i)
@@ -142,7 +156,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
       return
     }
     await speak(s.question, { voice: v, rate })
-    beginAnswer()
+    beginAnswer() // checks alive itself
   }
 
   const start = () => {
@@ -189,6 +203,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   }
 
   const finish = () => {
+    if (!alive.current) return
     setPhase('done')
     speak('Thank you. That is the end of the speaking test.', { voice, rate })
   }
