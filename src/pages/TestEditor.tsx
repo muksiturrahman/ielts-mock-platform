@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertTriangle, ArrowLeft, ChevronDown, Eye, FileUp, ImagePlus, Music, Plus, Save, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { Badge, Button, Card, Modal, cx, useToast } from '../components/ui'
 import { TaskChart } from '../components/TaskChart'
@@ -210,12 +210,13 @@ function SectionList<T extends { id: string }>({ items, onChange, make, label, r
 function MediaField({ kind, value, onChange }: { kind: 'audio' | 'image'; value?: string; onChange: (v?: string) => void }) {
   const [url, setUrl] = useState<string>()
   useEffect(() => { void resolveMediaUrl(value).then(setUrl) }, [value])
+  const fileRef = useRef<HTMLInputElement>(null)
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-slate-200 p-3">
-      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-brand-600">
+      <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-2 text-sm font-semibold text-brand-600">
         {kind === 'audio' ? <Music size={16} /> : <ImagePlus size={16} />} {value ? 'Replace' : 'Upload'} {kind}
-        <input type="file" hidden accept={kind === 'audio' ? 'audio/*' : 'image/*'} onChange={async e => { const f = e.target.files?.[0]; if (f) onChange(await putMedia(f)) }} />
-      </label>
+      </button>
+      <input ref={fileRef} type="file" hidden accept={kind === 'audio' ? 'audio/*' : 'image/*'} onChange={async e => { const f = e.target.files?.[0]; if (f) onChange(await putMedia(f)) }} />
       {url && (kind === 'audio' ? <audio src={url} controls className="h-9" /> : <img src={url} alt="" className="h-16 rounded" />)}
       {value && <button className="text-xs text-rose-500 hover:underline" onClick={() => onChange(undefined)}>Remove</button>}
       <span className="text-xs text-slate-400">Stored in this browser. Or paste a URL:</span>
@@ -262,6 +263,7 @@ function GroupsEditor({ groups, onChange }: { groups: QuestionGroup[]; onChange:
 function GroupEditor({ g, upd, remove }: { g: QuestionGroup; upd: (g: QuestionGroup) => void; remove: () => void }) {
   const [csvOpen, setCsvOpen] = useState(false)
   const [csv, setCsv] = useState('')
+  const csvFileRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState(false)
   const toast = useToast()
   const range = g.questions.length ? `Q${Math.min(...g.questions.map(q => q.number))}–${Math.max(...g.questions.map(q => q.number))}` : 'no questions'
@@ -319,7 +321,8 @@ function GroupEditor({ g, upd, remove }: { g: QuestionGroup; upd: (g: QuestionGr
         <p className="mb-2 text-sm text-slate-500">Columns: <code className="rounded bg-slate-100 px-1">{CSV_HEADER}</code>. Separate accepted answers or MCQ options with “|”, options as “A=text”. Rows are appended to this group.</p>
         <textarea className="input h-56 font-mono text-xs" value={csv} onChange={e => setCsv(e.target.value)} placeholder={`${CSV_HEADER}\n1,The museum opens at,10 am|10:00 am,,Speaker 2 corrects the time`} />
         <div className="mt-3 flex items-center justify-between">
-          <label className="cursor-pointer text-sm font-semibold text-brand-600">Load .csv file<input type="file" hidden accept=".csv,text/csv" onChange={async e => { const f = e.target.files?.[0]; if (f) setCsv(await f.text()) }} /></label>
+          <button type="button" onClick={() => csvFileRef.current?.click()} className="text-sm font-semibold text-brand-600">Load .csv file</button>
+          <input ref={csvFileRef} type="file" hidden accept=".csv,text/csv" onChange={async e => { const f = e.target.files?.[0]; if (f) setCsv(await f.text()) }} />
           <Button onClick={() => {
             try {
               const qs = questionsFromCsv(csv, `${g.id}-q`)

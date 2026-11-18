@@ -7,7 +7,7 @@ import { practiceTarget, progressSeries, skillAverages, weaknesses, type Weaknes
 import { reviewItems } from '../lib/review'
 import { createAttempt } from '../lib/attempts'
 import { isDue } from '../lib/store'
-import { attemptOverall, MODULE_LABEL } from '../lib/attempts'
+import { attemptOverall, moduleBands, MODULE_LABEL } from '../lib/attempts'
 import { useDB } from '../lib/store'
 import type { ModuleKey } from '../lib/types'
 import { MODULE_ICON, MODULE_TONE } from './Tests'
@@ -41,7 +41,9 @@ export default function Dashboard() {
   const streak = (() => {
     const days = new Set(attempts.map(a => new Date(a.startedAt).toDateString()))
     let n = 0
-    for (let d = new Date(); days.has(d.toDateString()); d.setDate(d.getDate() - 1)) n++
+    const d = new Date()
+    if (!days.has(d.toDateString())) d.setDate(d.getDate() - 1) // a streak isn't broken until today ends
+    for (; days.has(d.toDateString()); d.setDate(d.getDate() - 1)) n++
     return n
   })()
 
@@ -111,7 +113,7 @@ export default function Dashboard() {
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <motion.div className="h-full rounded-full" style={{ background: bandColor(b) }} initial={{ width: 0 }} animate={{ width: `${((b ?? 0) / 9) * 100}%` }} transition={{ duration: 1, delay: 0.3 }} />
               </div>
-              <div className="mt-1.5 text-xs text-slate-400" title={sk?.source === 'practice' ? 'No full mock yet — estimated from practice, which tends to score higher' : 'Average of your last 5 full mocks'}>{sk?.source === 'practice' ? 'Practice estimate' : 'Full-mock average'}</div>
+              <div className="mt-1.5 text-xs text-slate-400" title={sk?.source === 'practice' ? 'No full mock yet — estimated from practice, which tends to score higher' : 'Average of your last 5 full mocks'}>{!sk ? 'No attempts yet' : sk.source === 'practice' ? 'Practice estimate' : 'Full-mock average'}</div>
             </Card>
           )
         })}
@@ -186,7 +188,7 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {[...attempts].sort((a, b) => b.startedAt - a.startedAt).slice(0, 5).map(a => {
-                const o = attemptOverall(a)
+                const o = attemptOverall(a) ?? Object.values(moduleBands(a))[0] // practice: the module band, as My results shows
                 return (
                   <li key={a.id}>
                     <Link to={a.status === 'completed' ? `/results/${a.id}` : `/exam/${a.id}`} className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-slate-50">

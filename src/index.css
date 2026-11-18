@@ -105,6 +105,9 @@ body {
 /* brand-600 text (#4f46e5) is ~2.8:1 on #111827 — lighter indigo for links in dark mode */
 .dark .text-brand-600 { color: #a5b4fc }
 .dark .text-rose-600 { color: #fb7185 }
+/* Segmented controls: the selected bg-white pill sits on bg-slate-100 — lift it so the choice is visible */
+.dark .bg-slate-100 .bg-white { background-color: #3b4a63; box-shadow: 0 0 0 1px #64748b }
+.dark .hover\:bg-emerald-100:hover { background-color: #065f46 }
 .dark .text-slate-400 { color: #8b9ab0 } /* the remapped slate-400 (#64748b) is ~3.7:1 on cards */
 /* Exam in the dark app theme (not the official yellow/white-on-black modes): dark buttons need a visible shape */
 .dark .exam:not([data-contrast='yellow-black']):not([data-contrast='white-black']) .bg-slate-900 { background-color: #1d4ed8 }

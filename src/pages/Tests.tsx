@@ -36,7 +36,7 @@ export default function Tests() {
         </div>
         <label className="relative min-w-60 flex-1 sm:max-w-xs">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="input pl-9" placeholder="Search tests" value={q} onChange={e => setQ(e.target.value)} />
+          <input className="input pl-9" placeholder="Search tests" aria-label="Search tests" value={q} onChange={e => setQ(e.target.value)} />
         </label>
       </div>
 

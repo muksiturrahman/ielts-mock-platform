@@ -211,10 +211,10 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
           </div>
           <div className="mt-6"><TypeBars result={result} /></div>
         </Card>
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">{/* grid items default to min-width:auto — without this the wide table stretches the page on phones */}
           <div className="flex w-fit gap-1 rounded-2xl bg-white p-1 shadow-sm">
             {([['review', 'Full review'], ['sheet', 'Answer sheet']] as const).map(([k, l]) => (
-              <button key={k} disabled={k === 'review' && !test} onClick={() => setView(k)}
+              <button key={k} aria-pressed={view === k} disabled={k === 'review' && !test} onClick={() => setView(k)}
                 className={cx('relative rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-40', view === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
                 {view === k && <motion.span layoutId={`view-${module}`} className="absolute inset-0 rounded-xl bg-slate-900" />}
                 <span className="relative">{l}</span>
@@ -224,8 +224,8 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
           {view === 'review' && test ? (
             <ExamReview attempt={attempt} test={test} module={module} result={result} focus={focus} />
           ) : (
-            <Card className="overflow-hidden">
-              <table className="w-full text-sm">
+            <Card className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-sm">
                 <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Question</th><th className="px-4 py-3">Your answer</th><th className="px-4 py-3">Correct answer</th><th className="px-4 py-3" /></tr>
                 </thead>
@@ -236,10 +236,16 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
                       <Fragment key={it.questionId}>
                         <tr onClick={() => setOpen(o => (o === it.questionId ? undefined : it.questionId))} className={cx('cursor-pointer border-t border-slate-100 transition hover:bg-slate-50', open === it.questionId && 'bg-slate-50', !it.isCorrect && 'bg-rose-50/40')}>
                           <td className="px-4 py-2.5 font-semibold">{it.number}</td>
-                          <td className="max-w-xs truncate px-4 py-2.5 text-slate-600" title={questionText(loc)}>{questionText(loc) || '—'}</td>
+                          <td className="px-4 py-2.5 text-slate-600" title={questionText(loc)}><div className="line-clamp-2 max-w-xs">{questionText(loc) || '—'}</div></td>
                           <td className={cx('px-4 py-2.5', !it.given && 'italic text-slate-400', !it.isCorrect && it.given && 'text-rose-600 line-through decoration-rose-300')}>{it.given || 'No answer'}</td>
                           <td className="px-4 py-2.5 font-medium text-emerald-700">{(it.accepted ?? loc?.question.answer)?.join(' / ') ?? it.correct}</td>
-                          <td className="px-4 py-2.5">{it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}</td>
+                          <td className="px-4 py-2.5">
+                            {/* the row toggles by mouse; this button makes the explanation reachable by keyboard */}
+                            <button type="button" aria-expanded={open === it.questionId} aria-label={`${it.isCorrect ? 'Correct' : 'Wrong'} — show explanation for question ${it.number}`}
+                              onClick={e => { e.stopPropagation(); setOpen(o => (o === it.questionId ? undefined : it.questionId)) }} className="rounded">
+                              {it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}
+                            </button>
+                          </td>
                         </tr>
                         {open === it.questionId && loc?.question.explanation && (
                           <tr><td colSpan={5} className="bg-brand-50/50 px-4 py-3 text-slate-600">{loc.question.explanation}</td></tr>

@@ -37,7 +37,7 @@ export function AISection() {
           const pi = PROVIDERS[id]
           const on = id === p
           return (
-            <motion.button key={id} whileTap={{ scale: 0.98 }} onClick={() => setSettings({ provider: id })}
+            <motion.button key={id} aria-pressed={on} whileTap={{ scale: 0.98 }} onClick={() => setSettings({ provider: id })}
               className={cx('relative rounded-2xl border p-3.5 text-left transition', on ? 'border-brand-500 bg-brand-50 ring-4 ring-brand-100' : 'border-slate-200 bg-white hover:border-slate-300')}>
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-slate-900">{pi.label}</span>
@@ -76,7 +76,7 @@ export function AISection() {
           {options.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <span className="mt-1 block text-xs text-slate-400">
-          {chosen ? 'Fixed model. Switch back to Automatic if it gets slow or busy.' : 'Automatic tests the best free models for your key and uses the best one that answers. If it gets busy, the app switches by itself.'}
+          {chosen ? 'Fixed model. Switch back to Automatic if it gets slow or busy.' : p === 'gemini' || p === 'openai' ? 'Automatic tests the best models for your key and uses the best one that answers. If it gets busy, the app switches by itself.' : 'Automatic uses the recommended model for this provider and switches by itself if it gets busy.'}
         </span>
       </label>
 

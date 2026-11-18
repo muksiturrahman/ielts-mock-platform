@@ -62,7 +62,7 @@ export default function Mistakes() {
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {TABS.map((t, i) => (
           <motion.button key={t.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            onClick={() => { setTab(t.id); setType('all') }}
+            aria-pressed={tab === t.id} onClick={() => { setTab(t.id); setType('all') }}
             className={cx('card flex items-center gap-3 p-4 text-left transition', tab === t.id ? 'ring-4 ring-brand-100 border-brand-500' : 'hover:border-slate-300')}>
             <span className={cx('rounded-xl p-2', tab === t.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600')}><t.icon size={18} /></span>
             <div>

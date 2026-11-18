@@ -215,7 +215,12 @@ function Prompts() {
         </Card>
       ))}
       <div className="lg:col-span-2">
-        <Button onClick={() => { setSettings({ writingPrompt: w, speakingPrompt: s }); toast('Rubric prompts saved', 'success') }}>Save prompts</Button>
+        <Button onClick={() => {
+          // An empty rubric would send the AI no marking instructions: save the default instead.
+          const ww = w.trim() ? w : DEFAULT_WRITING_PROMPT, ss = s.trim() ? s : DEFAULT_SPEAKING_PROMPT
+          setW(ww); setS(ss); setSettings({ writingPrompt: ww, speakingPrompt: ss })
+          toast(ww !== w || ss !== s ? 'Saved — an empty prompt was replaced by the default' : 'Rubric prompts saved', 'success')
+        }}>Save prompts</Button>
       </div>
     </div>
   )
