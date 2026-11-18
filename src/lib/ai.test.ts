@@ -4,7 +4,7 @@ const stored = { 'ielts-mock.db': JSON.stringify({ tests: [], attempts: [], seed
 vi.stubGlobal('localStorage', { getItem: (k: keyof typeof stored) => stored[k] ?? null, setItem: () => {}, removeItem: () => {} })
 vi.stubGlobal('window', { addEventListener: () => {}, dispatchEvent: () => {} })
 
-const { suitableModels } = await import('./ai')
+const { suitableModels, evaluateWriting } = await import('./ai')
 const { getDB } = await import('./store')
 
 describe('suitableModels', () => {
@@ -28,5 +28,16 @@ describe('settings migration', () => {
     expect(s.keys.anthropic).toBe('sk-ant-old')
     expect(s.models.anthropic).toBe('claude-sonnet-5-5')
     expect('apiKey' in s).toBe(false)
+  })
+})
+
+describe('evaluateWriting', () => {
+  it('scores a blank task 0 without calling the AI', async () => {
+    const fetchSpy = vi.fn(() => { throw new Error('no network in this test') })
+    vi.stubGlobal('fetch', fetchSpy)
+    const r = await evaluateWriting({ id: 'w', number: 2, prompt: 'Discuss.', minWords: 250 } as never, '   ', 'academic')
+    expect(r.band).toBe(0)
+    expect(r.criteria.task.band).toBe(0)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })

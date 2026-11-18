@@ -45,7 +45,7 @@ export default function Mistakes() {
   const types = [...new Set(objective.map(m => typeLabel(m.item.type)))]
   const shown = objective.filter(m => type === 'all' || typeLabel(m.item.type) === type)
   const worst = Object.entries(
-    mistakes.reduce<Record<string, number>>((acc, m) => ({ ...acc, [typeLabel(m.item.type)]: (acc[typeLabel(m.item.type)] ?? 0) + 1 }), {}),
+    objective.reduce<Record<string, number>>((acc, m) => ({ ...acc, [typeLabel(m.item.type)]: (acc[typeLabel(m.item.type)] ?? 0) + 1 }), {}),
   ).sort((a, b) => b[1] - a[1])[0]
 
   return (

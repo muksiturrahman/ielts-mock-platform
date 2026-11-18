@@ -202,7 +202,12 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
             </>
           ) : audioPaused ? (
             <button onClick={() => void audioRef.current?.play()} className="rounded-md bg-[#1d4ed8] px-3 py-1 text-xs font-semibold text-white">The recording paused — Resume</button>
-          ) : playing !== null && <><AudioWave /><span className="font-semibold">Playing {sections[playing].title}</span></>}
+          ) : playing !== null && (
+            <>
+              <AudioWave /><span className="font-semibold">Playing {sections[playing].title}</span>
+              {progress.startedAt && <span className="font-mono tabular-nums opacity-70" title="Time since Listening started">{fmtClock(Math.max(0, now - progress.startedAt))}</span>}
+            </>
+          )}
           {checkUntil && <span className="font-semibold">Checking time · {fmtClock(Math.max(0, checkUntil - now))}</span>}
         </div>
       </div>

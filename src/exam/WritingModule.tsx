@@ -8,6 +8,7 @@ import { countWords } from '../lib/scoring'
 import { patchAttempt } from '../lib/store'
 import { QuestionNav, SplitPane, TopBar, useDeadline } from './ExamChrome'
 import type { ModuleProps } from './ExamPage'
+import type { Attempt } from '../lib/types'
 import { SubmitButton } from './SubmitButton'
 
 const AUTOSAVE_MS = 1000 // after typing pauses; a crash loses at most a second
@@ -20,10 +21,22 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
   const textRef = useRef(text)
   textRef.current = text
 
+  const savedRef = useRef(attempt.writing) // what this tab last saved or loaded
   const save = useCallback(() => {
+    savedRef.current = textRef.current
     patchAttempt(attempt.id, { writing: textRef.current })
     setSavedAt(Date.now())
   }, [attempt.id])
+
+  // The same attempt open in another tab saved newer text: take it if nothing is typed here since our last save.
+  const same = (a: Attempt['writing'], b: Attempt['writing']) => a.task1 === b.task1 && a.task2 === b.task2
+  useEffect(() => {
+    if (same(attempt.writing, savedRef.current)) return
+    if (same(textRef.current, savedRef.current)) {
+      savedRef.current = attempt.writing
+      setText(attempt.writing)
+    }
+  }, [attempt.writing])
 
   // Autosave a second after typing stops, when the tab is hidden and when leaving the module.
   useEffect(() => {

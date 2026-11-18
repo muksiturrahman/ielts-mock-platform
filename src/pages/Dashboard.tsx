@@ -19,7 +19,7 @@ export default function Dashboard() {
   const profile = useDB(d => d.profile)
   const navigate = useNavigate()
   const done = attempts.filter(a => a.status === 'completed')
-  const inProgress = attempts.filter(a => a.status === 'in_progress')
+  const inProgress = attempts.filter(a => a.status === 'in_progress').sort((a, b) => b.startedAt - a.startedAt)
   const overalls = done.map(attemptOverall).filter((x): x is number => x !== undefined)
   const latest = overalls.at(-1)
   const best = overalls.length ? Math.max(...overalls) : undefined

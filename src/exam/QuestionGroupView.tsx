@@ -114,6 +114,8 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
     const max = g.questions.length
     body = (
       <div id={`q-${g.questions[0].number}`} onFocus={() => onFocusQuestion?.(g.questions[0].number)}>
+        {/* "Choose TWO": the other numbers jump here too */}
+        {g.questions.slice(1).map(q => <span key={q.id} id={`q-${q.number}`} />)}
         {g.content && <RichContent text={g.content} />}
         <div className="mt-2 space-y-1.5">
           {(g.options ?? []).map(o => {
@@ -153,7 +155,8 @@ export function QuestionGroupView({ group: g, answers, setAnswer, flags, toggleF
           {g.questions.map(q => {
             const val = (answers[q.id] as string) ?? ''
             return (
-              <div key={q.id} id={`q-${q.number}`} onFocus={() => onFocusQuestion?.(q.number)} className="scroll-mt-24">
+              // Completion boxes and matching dropdowns carry the q-N id themselves; other types anchor on this row.
+              <div key={q.id} id={g.type === 'completion' || g.type === 'matching' ? undefined : `q-${q.number}`} onFocus={() => onFocusQuestion?.(q.number)} className="scroll-mt-24">
                 <div className="flex items-start gap-1">
                   <span className="q-num">{q.number}</span>
                   <div className="flex-1">

@@ -162,9 +162,11 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
   )
 }
 
-export function jumpTo(n: number) {
+export function jumpTo(n: number, tries = 30) {
   const el = document.getElementById(`q-${n}`)
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // Switching part animates the old one out first: wait (up to ~0.5 s) for the question to mount.
+  if (!el) { if (tries > 0) requestAnimationFrame(() => jumpTo(n, tries - 1)); return }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   setTimeout(() => (el?.querySelector('input,select') as HTMLElement | null ?? (el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : null))?.focus({ preventScroll: true }), 350)
 }
 

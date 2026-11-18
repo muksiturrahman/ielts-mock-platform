@@ -127,7 +127,7 @@ function IconBtn({ children, title, onClick, danger }: { children: React.ReactNo
 
 function Analytics() {
   const attempts = useDB(d => d.attempts)
-  const tests = useDB(d => d.tests)
+  const tests = useDB(d => d.tests).filter(t => !t.deleted) // same list as the Library
   const done = attempts.filter(a => a.status === 'completed')
   // Per-question difficulty across attempts → hardest items first.
   const items = new Map<string, { label: string; c: number; t: number }>()

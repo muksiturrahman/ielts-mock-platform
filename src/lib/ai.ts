@@ -134,10 +134,20 @@ const probe = (provider: AIProvider, key: string, model: string) =>
   callModel<{ ok: string }>(provider, key, model, 'You check connectivity.', 'Reply with ok = "ready".', PROBE_SCHEMA, 1000)
 const PROBE_SCHEMA = { type: 'object', properties: { ok: { type: 'string' } }, required: ['ok'], additionalProperties: false }
 
+const picking = new Map<AIProvider, Promise<string>>()
+/** Parallel marking (Task 1 + Task 2) shares one model test instead of probing every model twice. */
+function sharedAutoPick(provider: AIProvider, key: string) {
+  const running = picking.get(provider)
+  if (running) return running
+  const p = autoPick(provider, key).finally(() => picking.delete(provider))
+  picking.set(provider, p)
+  return p
+}
+
 /** The user's pick, else the fixed default, else the automatic choice (tested once, then remembered). */
 async function resolveModel(provider: AIProvider, key: string): Promise<string> {
   const s = getDB().settings
-  return s.models[provider]?.trim() || PROVIDERS[provider].defaultModel || s.autoModels?.[provider] || autoPick(provider, key)
+  return s.models[provider]?.trim() || PROVIDERS[provider].defaultModel || s.autoModels?.[provider] || sharedAutoPick(provider, key)
 }
 
 // ---------- structured calls ----------
@@ -341,6 +351,7 @@ const asCriterion = (c: unknown) => {
   const x = (c ?? {}) as { band?: unknown; comment?: unknown }
   return { band: clampBand(x.band), comment: String(x.comment ?? '') }
 }
+const oneOf = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(String(v).toLowerCase() as T) ? (String(v).toLowerCase() as T) : fallback)
 const asStrings = (xs: unknown) => (Array.isArray(xs) ? xs.map(String) : [])
 
 /**
@@ -354,6 +365,11 @@ function asCandidateText(tag: string, text: string) {
 
 export async function evaluateWriting(task: WritingTask, response: string, variant: 'academic' | 'general'): Promise<WritingTaskEval> {
   const words = countWords(response)
+  // Nothing written: band 0 on every criterion, as in the real test — no AI call that could fail or use quota.
+  if (!response.trim()) {
+    const zero = { band: 0, comment: 'No response.' }
+    return { criteria: { task: zero, coherence: zero, lexical: zero, grammar: zero }, annotations: [], strengths: [], improvements: ['Write a response: an unanswered task scores 0.'], modelAnswer: '', wordCount: 0, band: 0 }
+  }
   const visual = task.number === 1 && variant === 'academic'
     ? `\n\nVisual information (the candidate saw this as a ${task.kind}):\n${task.visualDescription ?? JSON.stringify(task.chart)}`
     : ''
@@ -373,7 +389,7 @@ ${asCandidateText('candidate_response', response || '(no response)')}`
     criteria,
     annotations: (Array.isArray(r.annotations) ? r.annotations : []).map(a => {
       const x = a as Record<string, unknown>
-      return { quote: String(x.quote ?? ''), type: (x.type as WritingTaskEval['annotations'][number]['type']) ?? 'grammar', issue: String(x.issue ?? ''), suggestion: String(x.suggestion ?? '') }
+      return { quote: String(x.quote ?? ''), type: oneOf(x.type, ['grammar', 'vocabulary', 'cohesion', 'task', 'spelling', 'punctuation'] as const, 'grammar'), issue: String(x.issue ?? ''), suggestion: String(x.suggestion ?? '') }
     }),
     strengths: asStrings(r.strengths),
     improvements: asStrings(r.improvements),
@@ -403,7 +419,7 @@ ${asCandidateText('transcripts', transcript)}`
     band: criteriaBand(keys.map(k => criteria[k].band)),
     notes: (Array.isArray(r.notes) ? r.notes : []).map(n => {
       const x = n as Record<string, unknown>
-      return { quote: String(x.quote ?? ''), type: (x.type as NonNullable<SpeakingResult['notes']>[number]['type']) ?? 'vocabulary', note: String(x.note ?? ''), ...(x.upgrade ? { upgrade: String(x.upgrade) } : {}) }
+      return { quote: String(x.quote ?? ''), type: oneOf(x.type, ['pronunciation', 'hesitation', 'grammar', 'vocabulary'] as const, 'vocabulary'), note: String(x.note ?? ''), ...(x.upgrade ? { upgrade: String(x.upgrade) } : {}) }
     }),
     strengths: asStrings(r.strengths),
     improvements: asStrings(r.improvements),
