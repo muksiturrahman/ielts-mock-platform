@@ -63,7 +63,8 @@ const NUMBER_WORDS: Record<string, string> = {
 const ORDINALS: Record<string, number> = {
   first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
   eleventh: 11, twelfth: 12, thirteenth: 13, fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17,
-  eighteenth: 18, nineteenth: 19, twentieth: 20, thirtieth: 30,
+  eighteenth: 18, nineteenth: 19, twentieth: 20, thirtieth: 30, fortieth: 40, fiftieth: 50, sixtieth: 60,
+  seventieth: 70, eightieth: 80, ninetieth: 90,
 }
 // British ↔ American spellings accepted in IELTS. shortcut: fixed list + -ise/-ize rule, extend when a test needs more.
 const SPELLING: Record<string, string> = {
@@ -104,12 +105,13 @@ function normWord(w: string): string {
 
 /** Number words → digits: "twenty-five" → 25, "a hundred and fifty" → 150, "one" → 1. */
 function numberWords(t: string): string {
-  t = t.replace(new RegExp(`\\b(twenty|thirty)[-\\s]+(${Object.keys(ORDINALS).slice(0, 9).join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ORDINALS[b]))
+  t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${Object.keys(ORDINALS).slice(0, 9).join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ORDINALS[b]))
   t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${ONES.join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ONES.indexOf(b) + 1))
   t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? (ORDINALS[w] ? String(ORDINALS[w]) : w))
   t = t.replace(/\b(a|\d{1,2})\s+100(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
   // "two thousand", "a thousand and fifty", "3 thousand 500" → digits
-  return t.replace(/\b(a|\d{1,3})\s+thousand(?:\s+(?:and\s+)?(\d{1,3}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 1000 + Number(rest ?? 0)))
+  t = t.replace(/\b(a|\d{1,3})\s+thousand(?:\s+(?:and\s+)?(\d{1,3}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 1000 + Number(rest ?? 0)))
+  return t.replace(/\bthousand\b/g, '1000')
 }
 
 export function normalizeAnswer(s: string): string {

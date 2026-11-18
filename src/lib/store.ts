@@ -212,12 +212,14 @@ export function exportBackup(media: Record<string, string> = {}): string {
 }
 
 /** Restores everything; keeps this browser's API keys when the file has none. Returns the media to restore. */
-export function importBackup(json: string): Record<string, string> {
+export function importBackup(json: string): { media: Record<string, string>; dropped: number } {
   const { media, ...parsed } = JSON.parse(json) as DB & { media?: Record<string, string> }
   if (!Array.isArray(parsed.tests) || !Array.isArray(parsed.attempts)) throw new Error('Not a valid backup file')
   // A hand-edited or damaged file must not leave the app unable to start: drop what can't be read, fill the rest.
   const tests = parsed.tests.filter(isTestShape).map(t => (t.status === 'published' && testIssues(t).blocking.length ? { ...t, status: 'draft' as const } : t))
-  const attempts = parsed.attempts.filter(a => a && typeof a.id === 'string' && typeof a.testId === 'string' && Array.isArray(a.modules) && a.progress && a.results && a.writing && Array.isArray(a.speaking))
+  const attempts = parsed.attempts
+    .filter(a => a && typeof a.id === 'string' && typeof a.testId === 'string' && Array.isArray(a.modules) && a.progress && a.results && a.writing && Array.isArray(a.speaking))
+    .map(a => ({ ...a, answers: a.answers ?? {}, flags: Array.isArray(a.flags) ? a.flags : [], highlights: a.highlights ?? {}, notes: a.notes ?? {}, scratchpad: a.scratchpad ?? '' }))
   if (parsed.tests.length && !tests.length) throw new Error('No readable tests in this backup')
   const settings = migrateSettings(parsed.settings)
   if (!Object.values(settings.keys).some(Boolean)) settings.keys = db.settings.keys
@@ -231,12 +233,14 @@ export function importBackup(json: string): Record<string, string> {
     settings,
     profile: { ...DEFAULT_PROFILE, ...parsed.profile },
   }))
-  return media && typeof media === 'object' ? media : {}
+  return { media: media && typeof media === 'object' ? media : {}, dropped: parsed.tests.length - tests.length + parsed.attempts.length - attempts.length }
 }
 
 export function resetAll() {
   readOnly = false
   localStorage.removeItem(KEY)
+  // Copies kept from corrupted data can hold old attempts and API keys.
+  Object.keys(localStorage).filter(k => k.startsWith(`${KEY}.corrupt-`)).forEach(k => localStorage.removeItem(k))
   db = load()
   listeners.forEach(l => l())
 }

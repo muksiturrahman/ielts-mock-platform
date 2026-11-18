@@ -87,7 +87,8 @@ export function sanitizeSvg(svg: string): string {
       const name = a.name.toLowerCase()
       const value = a.value.replace(/\s/g, '').toLowerCase()
       const badLink = (name === 'href' || name.endsWith(':href')) && !value.startsWith('#')
-      if (name.startsWith('on') || badLink || /url\((?!#)|javascript:|expression\(/.test(value)) el.removeAttribute(a.name)
+      // style can cover the whole app or load outside images; backslashes are CSS escapes (u\72 l( = url()
+      if (name.startsWith('on') || name === 'style' || badLink || value.includes('\\') || /url\((?!#)|javascript:|expression\(/.test(value)) el.removeAttribute(a.name)
     }
     // childNodes, not children: comments / <?pi?> / CDATA survive serialisation and the HTML parser
     // re-reads them differently ("<!--><img onerror>") — only elements and text may stay.

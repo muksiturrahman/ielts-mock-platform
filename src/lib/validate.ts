@@ -72,10 +72,14 @@ const arrayOf = (x: unknown, ok: (v: Record<string, unknown>) => boolean) => Arr
 /** Structure check for tests from a file (import or backup): everything the app reads without optional chaining. */
 export function isTestShape(t: unknown): t is Test {
   if (!isObj(t) || typeof t.id !== 'string' || typeof t.title !== 'string' || (t.variant !== 'academic' && t.variant !== 'general')) return false
-  const sectioned = (m: unknown) => m === undefined || (isObj(m) && arrayOf(m.sections, s => typeof s.id === 'string' && arrayOf(s.groups, g => typeof g.type === 'string' && Array.isArray(g.questions))))
+  const question = (q: Record<string, unknown>) => typeof q.id === 'string' && typeof q.number === 'number'
+    && Array.isArray(q.answer) && q.answer.every(a => typeof a === 'string') && (q.options === undefined || Array.isArray(q.options))
+  const group = (g: Record<string, unknown>) => typeof g.type === 'string' && arrayOf(g.questions, question) && (g.options === undefined || Array.isArray(g.options))
+  const sectioned = (m: unknown) => m === undefined || (isObj(m) && arrayOf(m.sections, s => typeof s.id === 'string' && arrayOf(s.groups, group)))
   const writing = t.writing === undefined || (isObj(t.writing) && arrayOf(t.writing.tasks, k => (k.number === 1 || k.number === 2) && typeof k.prompt === 'string'))
   const sp = t.speaking
   const speaking = sp === undefined || (isObj(sp) && isObj(sp.part1) && isObj(sp.part2) && isObj(sp.part3)
     && Array.isArray(sp.part1.topics) && Array.isArray(sp.part2.bullets) && Array.isArray(sp.part3.questions))
-  return sectioned(t.listening) && sectioned(t.reading) && writing && speaking
+  if (!(sectioned(t.listening) && sectioned(t.reading) && writing && speaking)) return false
+  try { testIssues(t as unknown as Test); return true } catch { return false } // the editor and publish run this too
 }

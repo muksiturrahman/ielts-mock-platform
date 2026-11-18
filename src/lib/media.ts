@@ -70,9 +70,12 @@ export async function exportAllMedia(): Promise<Record<string, string>> {
 }
 
 export async function importAllMedia(media: Record<string, string>) {
+  let failed = 0
   for (const [id, url] of Object.entries(media)) {
-    if (url.startsWith('data:')) await putMedia(await (await fetch(url)).blob(), id)
+    if (typeof url !== 'string' || !url.startsWith('data:')) { failed++; continue }
+    try { await putMedia(await (await fetch(url)).blob(), id) } catch { failed++ }
   }
+  return failed
 }
 
 /** Deletes every stored blob (recordings, uploaded audio/images) — used by "Reset everything". */

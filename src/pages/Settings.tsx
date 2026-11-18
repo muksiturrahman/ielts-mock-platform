@@ -87,7 +87,12 @@ export default function Settings() {
             const f = e.target.files?.[0]
             if (!f) return
             if (!confirm('Restoring replaces all tests, results and settings in this browser with the backup. Continue?')) { e.target.value = ''; return }
-            try { await importAllMedia(importBackup(await f.text())); toast('Backup restored', 'success') } catch (err) { toast(`Restore failed: ${(err as Error).message}`, 'error') }
+            try {
+              const { media, dropped } = importBackup(await f.text())
+              const failed = await importAllMedia(media)
+              const skipped = [dropped && `${dropped} unreadable test${dropped === 1 ? '' : 's'}/attempt${dropped === 1 ? '' : 's'}`, failed && `${failed} recording${failed === 1 ? '' : 's'}`].filter(Boolean)
+              toast(skipped.length ? `Backup restored — skipped ${skipped.join(' and ')}` : 'Backup restored', skipped.length ? 'info' : 'success')
+            } catch (err) { toast(`Restore failed: ${(err as Error).message}`, 'error') }
             e.target.value = ''
           }} />
         </div>

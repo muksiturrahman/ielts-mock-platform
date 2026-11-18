@@ -63,6 +63,8 @@ describe('answer matching', () => {
     expect(normalizeAnswer('15th of March')).toBe(normalizeAnswer('15 March'))
     expect(normalizeAnswer('fifteenth March')).toBe(normalizeAnswer('15 March'))
     expect(normalizeAnswer('twenty-first of May')).toBe(normalizeAnswer('May 21'))
+    expect(normalizeAnswer('forty-second street')).toBe(normalizeAnswer('42nd street'))
+    expect(normalizeAnswer('thousand')).toBe('1000')
     expect(normalizeAnswer('£1,250')).toBe('1250')
   })
   it('expands optional words and alternatives', () => {

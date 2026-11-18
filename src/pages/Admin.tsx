@@ -60,7 +60,7 @@ function Library() {
       const data = JSON.parse(await f.text())
       const list = (Array.isArray(data) ? data : [data]).map(t => (t && typeof t === 'object' && typeof t.id !== 'string' ? { ...t, id: 'import' } : t)).filter(isTestShape)
       if (!list.length) throw new Error('No valid tests in this file')
-      list.forEach(t => saveTest({ ...t, id: uid('test-'), status: 'draft', createdAt: Date.now() }))
+      list.forEach(t => saveTest({ ...t, id: uid('test-'), status: 'draft', deleted: undefined, createdAt: Date.now() }))
       toast(`Imported ${list.length} test${list.length > 1 ? 's' : ''} as draft`, 'success')
     } catch (e) {
       toast(`Import failed: ${(e as Error).message}`, 'error')
