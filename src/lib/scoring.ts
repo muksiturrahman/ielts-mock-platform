@@ -56,7 +56,14 @@ export function writingBand(task1?: number, task2?: number): number | undefined 
 const NUMBER_WORDS: Record<string, string> = {
   zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9',
   ten: '10', eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16',
-  seventeen: '17', eighteen: '18', nineteen: '19', twenty: '20', thirty: '30', forty: '40', fifty: '50', hundred: '100',
+  seventeen: '17', eighteen: '18', nineteen: '19', twenty: '20', thirty: '30', forty: '40', fifty: '50', sixty: '60',
+  seventy: '70', eighty: '80', ninety: '90', hundred: '100',
+}
+// Ordinals ("fifteenth March", "first floor") become digits on both sides, like "15th" / "1st".
+const ORDINALS: Record<string, number> = {
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
+  eleventh: 11, twelfth: 12, thirteenth: 13, fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17,
+  eighteenth: 18, nineteenth: 19, twentieth: 20, thirtieth: 30,
 }
 // British ↔ American spellings accepted in IELTS. shortcut: fixed list + -ise/-ize rule, extend when a test needs more.
 const SPELLING: Record<string, string> = {
@@ -87,6 +94,7 @@ const ISE_STEMS = new Set((
 function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
   if (SPELLING[w]) return SPELLING[w]
+  if (w.endsWith('s') && SPELLING[w.slice(0, -1)]) return `${SPELLING[w.slice(0, -1)]}s` // colours, metres
   const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations|er|ers|able)$/)
   if (ise && ISE_STEMS.has(ise[1])) return `${ise[1]}iz${ise[2]}`
   const yse = w.match(/^(anal|paral|catal|electrol|dial)ys(e|es|ed|ing|er|ers)$/)
@@ -96,9 +104,12 @@ function normWord(w: string): string {
 
 /** Number words → digits: "twenty-five" → 25, "a hundred and fifty" → 150, "one" → 1. */
 function numberWords(t: string): string {
+  t = t.replace(new RegExp(`\\b(twenty|thirty)[-\\s]+(${Object.keys(ORDINALS).slice(0, 9).join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ORDINALS[b]))
   t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${ONES.join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ONES.indexOf(b) + 1))
-  t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? w)
-  return t.replace(/\b(a|\d{1,2})\s+100(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
+  t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? (ORDINALS[w] ? String(ORDINALS[w]) : w))
+  t = t.replace(/\b(a|\d{1,2})\s+100(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
+  // "two thousand", "a thousand and fifty", "3 thousand 500" → digits
+  return t.replace(/\b(a|\d{1,3})\s+thousand(?:\s+(?:and\s+)?(\d{1,3}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 1000 + Number(rest ?? 0)))
 }
 
 export function normalizeAnswer(s: string): string {
@@ -107,6 +118,7 @@ export function normalizeAnswer(s: string): string {
   t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (_m, h, mm, ap) => `${Number(h)}:${mm ?? '00'} ${ap[0]}m`)
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
+  t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')
   t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(\\d{1,2})\\b`, 'g'), '$2 $1')
   // phone / long numbers written in groups: "07962 551 340" → "07962551340"
   t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
@@ -144,7 +156,7 @@ export function expandAccepted(answer: string): string[] {
 function wordCount(s: string): { words: number; numbers: number } {
   // A date ("21 March 2024") or grouped digits ("07962 551 340") count as one number, as in the real test.
   const t = numberWords(s.toLowerCase())
-    .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
+    .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(of\\s+)?(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   const parts = t.trim().split(/\s+/).filter(Boolean)

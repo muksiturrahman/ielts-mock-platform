@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Attempt, Profile, ReviewState, Settings, Test, VocabWord } from './types'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from './prompts'
-import { testIssues } from './validate'
+import { isTestShape, testIssues } from './validate'
 
 export interface DB {
   version: number
@@ -215,10 +215,23 @@ export function exportBackup(media: Record<string, string> = {}): string {
 export function importBackup(json: string): Record<string, string> {
   const { media, ...parsed } = JSON.parse(json) as DB & { media?: Record<string, string> }
   if (!Array.isArray(parsed.tests) || !Array.isArray(parsed.attempts)) throw new Error('Not a valid backup file')
+  // A hand-edited or damaged file must not leave the app unable to start: drop what can't be read, fill the rest.
+  const tests = parsed.tests.filter(isTestShape).map(t => (t.status === 'published' && testIssues(t).blocking.length ? { ...t, status: 'draft' as const } : t))
+  const attempts = parsed.attempts.filter(a => a && typeof a.id === 'string' && typeof a.testId === 'string' && Array.isArray(a.modules) && a.progress && a.results && a.writing && Array.isArray(a.speaking))
+  if (parsed.tests.length && !tests.length) throw new Error('No readable tests in this backup')
   const settings = migrateSettings(parsed.settings)
   if (!Object.values(settings.keys).some(Boolean)) settings.keys = db.settings.keys
-  update(() => ({ ...parsed, settings, profile: { ...DEFAULT_PROFILE, ...parsed.profile } }))
-  return media ?? {}
+  update(() => ({
+    version: VERSION,
+    tests,
+    attempts,
+    seeded: Array.isArray(parsed.seeded) ? parsed.seeded.filter(x => typeof x === 'string') : [],
+    reviews: parsed.reviews && typeof parsed.reviews === 'object' ? parsed.reviews : {},
+    vocab: Array.isArray(parsed.vocab) ? parsed.vocab : [],
+    settings,
+    profile: { ...DEFAULT_PROFILE, ...parsed.profile },
+  }))
+  return media && typeof media === 'object' ? media : {}
 }
 
 export function resetAll() {

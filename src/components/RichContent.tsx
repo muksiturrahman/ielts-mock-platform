@@ -89,9 +89,12 @@ export function sanitizeSvg(svg: string): string {
       const badLink = (name === 'href' || name.endsWith(':href')) && !value.startsWith('#')
       if (name.startsWith('on') || badLink || /url\((?!#)|javascript:|expression\(/.test(value)) el.removeAttribute(a.name)
     }
-    for (const child of [...el.children]) {
-      if (SVG_TAGS.has(child.localName.toLowerCase())) clean(child)
-      else child.remove()
+    // childNodes, not children: comments / <?pi?> / CDATA survive serialisation and the HTML parser
+    // re-reads them differently ("<!--><img onerror>") — only elements and text may stay.
+    for (const node of [...el.childNodes]) {
+      if (node.nodeType === Node.TEXT_NODE) continue
+      if (node.nodeType === Node.ELEMENT_NODE && SVG_TAGS.has((node as Element).localName.toLowerCase())) clean(node as Element)
+      else node.remove()
     }
   }
   clean(root)

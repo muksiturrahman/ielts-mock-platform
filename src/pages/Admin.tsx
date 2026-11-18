@@ -8,7 +8,7 @@ import { restoreSeed, SEED_TESTS } from '../data/seed'
 import { attemptOverall, availableModules, MODULE_LABEL } from '../lib/attempts'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from '../lib/prompts'
 import { deleteTest, saveTest, setSettings, uid, useDB } from '../lib/store'
-import { testIssues } from '../lib/validate'
+import { isTestShape, testIssues } from '../lib/validate'
 import type { Test } from '../lib/types'
 
 type Tab = 'tests' | 'analytics' | 'prompts'
@@ -45,10 +45,6 @@ export function blankTest(variant: Test['variant'] = 'academic'): Test {
   return { id: uid('test-'), title: 'Untitled test', variant, status: 'draft', createdAt: Date.now(), updatedAt: Date.now(), description: '' }
 }
 
-function validateImported(t: unknown): t is Test {
-  const x = t as Test
-  return Boolean(x && typeof x.title === 'string' && (x.variant === 'academic' || x.variant === 'general'))
-}
 
 function Library() {
   const tests = useDB(d => d.tests.filter(t => !t.deleted).sort((a, b) => b.updatedAt - a.updatedAt))
@@ -62,7 +58,7 @@ function Library() {
   const importFile = async (f: File) => {
     try {
       const data = JSON.parse(await f.text())
-      const list = (Array.isArray(data) ? data : [data]).filter(validateImported)
+      const list = (Array.isArray(data) ? data : [data]).map(t => (t && typeof t === 'object' && typeof t.id !== 'string' ? { ...t, id: 'import' } : t)).filter(isTestShape)
       if (!list.length) throw new Error('No valid tests in this file')
       list.forEach(t => saveTest({ ...t, id: uid('test-'), status: 'draft', createdAt: Date.now() }))
       toast(`Imported ${list.length} test${list.length > 1 ? 's' : ''} as draft`, 'success')

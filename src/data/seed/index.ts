@@ -46,14 +46,23 @@ export const SEED_TESTS: Test[] = [
   })),
 ]
 
-/** Installs seed tests once; later deletions by the admin are respected. */
+/**
+ * Installs seed tests once (later deletions by the admin are respected) and refreshes copies the admin never
+ * edited, so answer-key fixes reach existing users. An edit sets updatedAt, which marks the copy as the admin's own.
+ */
 export function ensureSeeded() {
   update(d => {
     const missing = SEED_TESTS.filter(t => !d.seeded.includes(t.id))
-    if (!missing.length) return d
+    const fresh = (t: Test) => {
+      const seed = SEED_TESTS.find(s => s.id === t.id)
+      const unedited = seed && !t.deleted && t.updatedAt === seed.updatedAt
+      return unedited && JSON.stringify(t) !== JSON.stringify(seed) ? seed : t
+    }
+    const tests = d.tests.map(fresh)
+    if (!missing.length && tests.every((t, i) => t === d.tests[i])) return d
     return {
       ...d,
-      tests: [...d.tests.filter(t => !missing.some(m => m.id === t.id)), ...missing],
+      tests: [...tests.filter(t => !missing.some(m => m.id === t.id)), ...missing],
       seeded: [...d.seeded, ...missing.map(t => t.id)],
     }
   })
@@ -61,5 +70,5 @@ export function ensureSeeded() {
 
 export function restoreSeed(id: string) {
   const t = SEED_TESTS.find(s => s.id === id)
-  if (t) update(d => ({ ...d, tests: [...d.tests.filter(x => x.id !== id), { ...t, updatedAt: Date.now() }] }))
+  if (t) update(d => ({ ...d, tests: [...d.tests.filter(x => x.id !== id), t] })) // unedited, so it gets later fixes too
 }

@@ -4,7 +4,7 @@ import { Button, Card, PageHeader, useToast } from '../components/ui'
 import { ensureSeeded } from '../data/seed'
 import { AISection } from './AISettings'
 import { speak } from '../lib/speech'
-import { exportAllMedia, importAllMedia } from '../lib/media'
+import { clearAllMedia, exportAllMedia, importAllMedia } from '../lib/media'
 import { exportBackup, importBackup, resetAll, setProfile, setSettings, useDB } from '../lib/store'
 
 
@@ -78,7 +78,11 @@ export default function Settings() {
             setTimeout(() => URL.revokeObjectURL(a.href), 1000)
           }}><Download size={16} /> Download backup</Button>
           <Button variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={16} /> Restore backup</Button>
-          <Button variant="danger" onClick={() => { if (confirm('Delete all attempts, custom tests and settings? This cannot be undone.')) { resetAll(); ensureSeeded(); toast('Everything was reset') } }}><RotateCcw size={16} /> Reset everything</Button>
+          <Button variant="danger" onClick={async () => {
+            if (!confirm('Delete all attempts, recordings, custom tests and settings? This cannot be undone.')) return
+            resetAll(); ensureSeeded()
+            try { await clearAllMedia(); toast('Everything was reset') } catch { toast('Reset done, but saved recordings could not be deleted', 'error') }
+          }}><RotateCcw size={16} /> Reset everything</Button>
           <input ref={fileRef} type="file" hidden accept="application/json" onChange={async e => {
             const f = e.target.files?.[0]
             if (!f) return

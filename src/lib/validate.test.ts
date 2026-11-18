@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isCompletionCorrect } from './scoring'
-import { testIssues } from './validate'
+import { isTestShape, testIssues } from './validate'
 import type { Test } from './types'
 
 // The seed module pulls in the store, which touches browser globals at import time.
@@ -40,5 +40,20 @@ describe('testIssues', () => {
     const q = (n: number) => ({ id: `q${n}`, number: n, prompt: '', answer: ['TRUE'] })
     expect(testIssues(base(sec({ id: 'g', type: 'tfng', instructions: '', questions: [q(14), q(15)] }))).blocking).toEqual([])
     expect(testIssues(base(sec({ id: 'g', type: 'completion', instructions: '', content: 'Notes', questions: [{ id: 'q', number: 1, prompt: 'The {{1}} is open', answer: ['x'] }] }))).blocking.join()).toContain('no {{n}} gap')
+  })
+})
+
+describe('isTestShape (imports and backups)', () => {
+  it('accepts every built-in test', () => {
+    expect(SEED_TESTS.every(isTestShape)).toBe(true)
+  })
+  it('rejects tests the app could not open', () => {
+    const base = { id: 'x', title: 'T', variant: 'academic' }
+    expect(isTestShape({ ...base, listening: {} })).toBe(false)
+    expect(isTestShape({ ...base, reading: { sections: [{ id: 's' }] } })).toBe(false)
+    expect(isTestShape({ ...base, writing: { tasks: [{ number: 3, prompt: 'p' }] } })).toBe(false)
+    expect(isTestShape({ ...base, speaking: { part1: {}, part2: {}, part3: {} } })).toBe(false)
+    expect(isTestShape({ ...base, variant: 'ielts' })).toBe(false)
+    expect(isTestShape(base)).toBe(true)
   })
 })

@@ -74,3 +74,10 @@ export async function importAllMedia(media: Record<string, string>) {
     if (url.startsWith('data:')) await putMedia(await (await fetch(url)).blob(), id)
   }
 }
+
+/** Deletes every stored blob (recordings, uploaded audio/images) — used by "Reset everything". */
+export async function clearAllMedia() {
+  urlCache.forEach(url => URL.revokeObjectURL(url))
+  urlCache.clear()
+  await tx('readwrite', s => s.clear())
+}
