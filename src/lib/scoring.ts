@@ -73,11 +73,22 @@ const TENS_VALUE: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, 
 const ONES = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
 const MONTH_RE = MONTHS.join('|')
 
+// Words spelt -ise (UK) or -ize (US). A list, not a rule: "promise", "expertise", "exercise" have no -ize form.
+const ISE_STEMS = new Set((
+  'agon antagon apolog author capital categor central character civil colon commercial computer container '
+  + 'criminal custom decentral democrat dramat econom emphas energ equal evangel external familiar fantas fertil '
+  + 'final fossil general glamor global harmon hospital hypothes ideal immun individual industrial internal italic '
+  + 'jeopard legal legitim liberal local magnet material maxim memor mesmer metabol miniatur minim mobil modern '
+  + 'monopol motor national natural neutral normal optim organ ostrac patron penal personal polar popular pressur '
+  + 'priorit private radical random rational real recogn regular revolution sanit satir scandal scrutin sensit '
+  + 'serial social special spiritual stabil standard steril stigmat strateg subsid summar symbol sympath synchron '
+  + 'tempor terror theor trivial tyrann union urban util vandal vapor visual vocal western').split(/\s+/))
+
 function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
   if (SPELLING[w]) return SPELLING[w]
-  const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations)$/)
-  if (ise) return `${ise[1]}iz${ise[2]}`
+  const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations|er|ers)$/)
+  if (ise && ISE_STEMS.has(ise[1])) return `${ise[1]}iz${ise[2]}`
   return w
 }
 

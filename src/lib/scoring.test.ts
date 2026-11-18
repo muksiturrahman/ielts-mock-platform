@@ -43,6 +43,12 @@ describe('answer matching', () => {
     expect(normalizeAnswer('10 am')).toBe(normalizeAnswer('10:00am'))
     expect(normalizeAnswer('21st March')).toBe(normalizeAnswer('March 21'))
     expect(normalizeAnswer('organise')).toBe(normalizeAnswer('organize'))
+    expect(normalizeAnswer('recognised')).toBe(normalizeAnswer('recognized'))
+    expect(normalizeAnswer('organisations')).toBe(normalizeAnswer('organizations'))
+    // -ise words with no -ize form: a "z" spelling is a misspelling
+    expect(normalizeAnswer('promize')).not.toBe(normalizeAnswer('promise'))
+    expect(normalizeAnswer('exercize')).not.toBe(normalizeAnswer('exercise'))
+    expect(normalizeAnswer('expertize')).not.toBe(normalizeAnswer('expertise'))
     expect(normalizeAnswer('three')).toBe('3')
     expect(normalizeAnswer('£1,250')).toBe('1250')
   })

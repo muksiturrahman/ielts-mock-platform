@@ -29,11 +29,14 @@ export async function getMedia(ref: string): Promise<Blob | undefined> {
   return tx('readonly', s => s.get(ref.replace(/^media:/, '')))
 }
 
+const urlCache = new Map<string, string>()
+
 export async function deleteMedia(ref: string) {
+  const key = `media:${ref.replace(/^media:/, '')}`
+  const url = urlCache.get(key)
+  if (url) { URL.revokeObjectURL(url); urlCache.delete(key) }
   await tx('readwrite', s => s.delete(ref.replace(/^media:/, '')))
 }
-
-const urlCache = new Map<string, string>()
 
 /** "media:<id>" → object URL; plain URLs pass through. */
 export async function resolveMediaUrl(ref?: string): Promise<string | undefined> {

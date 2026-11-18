@@ -250,7 +250,8 @@ export function startRecording(
 }
 
 // ---------- Fluency metrics ----------
-const FILLERS = ['um', 'uh', 'erm', 'er', 'ah', 'hmm', 'like', 'you know', 'i mean', 'sort of', 'kind of', 'basically', 'actually']
+// Not "like": in transcripts (no commas) "I like reading" can't be told apart from a filler.
+const FILLERS = ['um', 'uh', 'erm', 'er', 'ah', 'hmm', 'you know', 'i mean', 'sort of', 'kind of', 'basically', 'actually']
 
 export function computeMetrics(answers: SpeakingAnswer[]): SpeakingMetrics {
   const text = answers.map(a => a.transcript).join(' ').toLowerCase()

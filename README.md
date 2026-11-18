@@ -13,7 +13,7 @@ All data stays in your browser.
 **Exam engine (CD-IELTS look and feel)**
 - **Listening:** 4 parts and 40 questions. The recording plays once only (no pause or rewind), with a volume slider, a sound check and 2 minutes of checking time. It uses uploaded audio, or reads the script aloud with a different voice per speaker.
 - **Reading:** a split screen with a draggable divider. Right-click the passage to **highlight** text or **add a note**. Academic and General Training use separate band tables.
-- **Writing:** Task 1 (charts drawn from data, process diagrams, maps, or a letter) and Task 2. Live word count, spell-check and autocorrect disabled, autosave every 10 seconds.
+- **Writing:** Task 1 (charts drawn from data, process diagrams, maps, or a letter) and Task 2. Live word count, spell-check and autocorrect disabled, autosave about a second after you stop typing.
 - **Speaking:** mic check with a level meter, an AI examiner voice, Parts 1–3, a Part 2 cue card with 1 minute of prep and a scratchpad, recording per answer, live transcription, and detection of pauses and filler words.
 - **Navigation and display:** a question navigator (answered and flagged states), review flags, a timer you can hide, text size and contrast modes (yellow on black, white on black).
 - **Integrity and resume:** auto-submit when time runs out, tab-switch warnings that are recorded, and resume after refresh (deadlines are stored, not counted down in memory).
@@ -77,7 +77,7 @@ Every push to `main` runs the tests, builds the app and deploys it to GitHub Pag
 
 ```
 src/
-  lib/          types, scoring (+ tests), store, media (IndexedDB), claude, speech, attempts, analytics, csv
+  lib/          types, scoring (+ tests), store, media (IndexedDB), ai (all providers), speech, attempts, analytics, csv
   data/seed/    original test content + integrity tests
   exam/         exam runner: chrome, passage, question renderer, 4 modules
   pages/        dashboard, tests, results, TRF, history, examiner, admin, test editor, settings

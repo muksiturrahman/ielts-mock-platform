@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Empty, PageHeader, cx, fmtDate } from '../components/ui'
 import { createAttempt } from '../lib/attempts'
-import { collectMistakes, collectSpeakingNotes, collectVocab, collectWritingNotes, questionText, type Mistake } from '../lib/review'
+import { collectMistakes, collectSpeakingNotes, collectVocab, collectWritingNotes, questionText, reviewItems, type Mistake } from '../lib/review'
 import { typeLabel } from '../lib/scoring'
 import { addVocab, deleteVocab, isDue, isMastered, markReview, REVIEW_DAYS, resetReview, useDB } from '../lib/store'
 
@@ -35,8 +35,7 @@ export default function Mistakes() {
     xs.filter(x => (view === 'all' ? true : view === 'mastered' ? isMastered(reviews[x.key]) : isDue(reviews[x.key])))
   const all = { reading: mistakes.filter(m => m.module === 'reading'), listening: mistakes.filter(m => m.module === 'listening'), writing, speaking, vocabulary: vocab }
   const counts = Object.fromEntries(Object.entries(all).map(([k, v]) => [k, inView(v as { key: string }[]).length])) as Record<Tab, number>
-  // A vocabulary correction shows in both its Writing/Speaking tab and Vocabulary — count it once.
-  const everything = [...new Map((Object.values(all).flat() as { key: string }[]).map(x => [x.key, x])).values()]
+  const everything = useMemo(() => reviewItems(attempts, tests, ownVocab), [attempts, tests, ownVocab])
   const dueTotal = everything.filter(x => isDue(reviews[x.key])).length
   const masteredTotal = everything.filter(x => isMastered(reviews[x.key])).length
   const [tab, setTab] = useState<Tab>(() => (params.get('tab') as Tab) || (TABS.find(t => counts[t.id])?.id ?? 'reading'))

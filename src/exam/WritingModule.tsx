@@ -10,7 +10,7 @@ import { QuestionNav, SplitPane, TopBar, useDeadline } from './ExamChrome'
 import type { ModuleProps } from './ExamPage'
 import { SubmitButton } from './SubmitButton'
 
-const AUTOSAVE_MS = 10_000
+const AUTOSAVE_MS = 1000 // after typing pauses; a crash loses at most a second
 
 export default function WritingModule({ test, attempt, onSubmit, exitButton }: ModuleProps) {
   const tasks = test.writing!.tasks.filter(t => !attempt.sections || attempt.sections.includes(t.number))
@@ -25,13 +25,16 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
     setSavedAt(Date.now())
   }, [attempt.id])
 
-  // Autosave every 10s, when the tab is hidden and when leaving the module.
+  // Autosave a second after typing stops, when the tab is hidden and when leaving the module.
   useEffect(() => {
-    const t = setInterval(save, AUTOSAVE_MS)
+    if (text === attempt.writing) return
+    const t = setTimeout(save, AUTOSAVE_MS)
+    return () => clearTimeout(t)
+  }, [text]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
     const onHide = () => document.visibilityState === 'hidden' && save()
     document.addEventListener('visibilitychange', onHide)
     return () => {
-      clearInterval(t)
       document.removeEventListener('visibilitychange', onHide)
       save()
     }

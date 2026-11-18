@@ -96,7 +96,16 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   const now = useNow(250)
   const step = steps[index]
 
-  useEffect(() => () => { stopSpeaking(); stream?.getTracks().forEach(t => t.stop()) }, [stream])
+  useEffect(() => () => { stream?.getTracks().forEach(t => t.stop()) }, [stream])
+  // Leaving mid-test: stop the examiner, the recording and recognition, and stop any pending ask() chain.
+  const alive = useRef(true)
+  useEffect(() => () => { alive.current = false; stopSpeaking(); void recRef.current?.stop(); recRef.current = null }, [])
+  // Part 2 notes survive a refresh or exit.
+  useEffect(() => {
+    if (notes === attempt.scratchpad) return
+    const t = setTimeout(() => patchAttempt(attempt.id, { scratchpad: notes }), 800)
+    return () => clearTimeout(t)
+  }, [notes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mic check level meter
   useEffect(() => {
@@ -124,7 +133,9 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     const ack = pendingAck.current || (s.lead ? '' : s.ack ?? '')
     pendingAck.current = ''
     if (ack && !s.lead?.startsWith(ack)) { await speak(ack, { voice: v, rate }); await pause(350) }
+    if (!alive.current) return
     if (s.lead) { await speak(s.lead.replace('{examiner}', examinerName(v)), { voice: v, rate }); await pause(400) }
+    if (!alive.current) return
     if (s.cue) {
       setPhase('prep')
       setPhaseStart(Date.now())
@@ -141,7 +152,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   }
 
   const beginAnswer = () => {
-    if (!stream) return
+    if (!stream || !alive.current) return
     setPhase('answering')
     setPhaseStart(Date.now())
     recRef.current = startRecording(stream, { onLevel: setLevel, onTranscript: setTranscript })

@@ -207,7 +207,7 @@ function Prompts() {
       {([['Writing examiner prompt', w, setW, DEFAULT_WRITING_PROMPT], ['Speaking examiner prompt', s, setS, DEFAULT_SPEAKING_PROMPT]] as const).map(([title, val, set, def]) => (
         <Card key={title} className="p-6">
           <div className="mb-1 font-display text-lg font-bold">{title}</div>
-          <p className="mb-3 text-sm text-slate-500">System prompt sent to Claude. The scoring schema (criteria, annotations, model answer) is fixed in code, so only tune wording and calibration here.</p>
+          <p className="mb-3 text-sm text-slate-500">System prompt sent to the AI examiner (whichever provider is chosen in Settings). The scoring schema (criteria, annotations, model answer) is fixed in code, so only tune wording and calibration here.</p>
           <textarea className="input h-80 font-mono text-xs leading-relaxed" value={val} onChange={e => set(e.target.value)} />
           <div className="mt-3 flex justify-between">
             <Button variant="ghost" size="sm" onClick={() => set(def)}><RotateCcw size={14} /> Reset to default</Button>

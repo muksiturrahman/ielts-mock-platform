@@ -102,3 +102,9 @@ export function collectVocab(attempts: Attempt[], own: VocabWord[] = []): VocabI
   }).map(({ at: _at, ...v }) => v)
   return [...own.map(w => ({ key: `vocab:${w.id}`, from: '', to: w.word, why: w.meaning, source: 'Added by you' })), ...unique]
 }
+
+/** Every reviewable item once (a vocabulary correction is also a Writing/Speaking note) — the base for due/mastered counts. */
+export function reviewItems(attempts: Attempt[], tests: Test[], own: VocabWord[] = []): { key: string }[] {
+  const all = [...collectMistakes(attempts, tests), ...collectWritingNotes(attempts), ...collectSpeakingNotes(attempts), ...collectVocab(attempts, own)]
+  return [...new Map(all.map(x => [x.key, x])).values()]
+}

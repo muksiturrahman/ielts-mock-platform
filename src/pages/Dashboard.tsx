@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { CartesianGrid, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BandRing, Button, Card, CountUp, Empty, bandColor, fmtBand, fmtDate } from '../components/ui'
 import { practiceTarget, progressSeries, skillAverages, weaknesses, type Weakness } from '../lib/analytics'
-import { collectMistakes, collectSpeakingNotes, collectWritingNotes } from '../lib/review'
+import { reviewItems } from '../lib/review'
 import { createAttempt } from '../lib/attempts'
 import { isDue } from '../lib/store'
 import { attemptOverall, MODULE_LABEL } from '../lib/attempts'
@@ -28,7 +28,8 @@ export default function Dashboard() {
   const weak = weaknesses(done)
   const tests = useDB(d => d.tests)
   const reviews = useDB(d => d.reviews)
-  const dueCount = [...collectMistakes(attempts, tests), ...collectWritingNotes(attempts), ...collectSpeakingNotes(attempts)].filter(x => isDue(reviews?.[x.key])).length
+  const ownVocab = useDB(d => d.vocab)
+  const dueCount = reviewItems(attempts, tests, ownVocab).filter(x => isDue(reviews?.[x.key])).length
   const practise = (w: Weakness) => {
     const target = practiceTarget(tests, attempts, w)
     if (!target) return navigate('/tests')
