@@ -72,7 +72,7 @@ const pause = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 type Phase = 'check' | 'asking' | 'prep' | 'answering' | 'saving' | 'done'
 
-export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: ModuleProps) {
+export default function SpeakingModule({ test, attempt, onSubmit, exitButton, paused }: ModuleProps) {
   const rate = useDB(d => d.settings.ttsRate)
   // Voices load asynchronously, so the examiner's voice (and name) is fixed when the test starts.
   const [voice, setVoice] = useState<SpeechSynthesisVoice>()
@@ -264,6 +264,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   // Timers: Part 2 prep (60s) → "please start speaking now"; answer time limits → auto stop.
   const elapsed = (now - phaseStart) / 1000
   useEffect(() => {
+    if (paused) return // a dialog is open: the examiner waits
     if (phase === 'prep' && elapsed >= PREP_SEC) {
       setPhase('asking')
       const gen = genRef.current

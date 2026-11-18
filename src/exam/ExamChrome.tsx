@@ -41,6 +41,8 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
   const [open, setOpen] = useState(false)
   const settings = useDB(d => d.settings)
   const low = remaining !== undefined && remaining < 5 * 60_000
+  // Screen readers hear the 10 / 5 / 1-minute marks (the visual pulse alone isn't enough).
+  const mark = remaining === undefined ? undefined : [10, 5, 1].find(m => remaining <= m * 60_000 && remaining > (m - 0.5) * 60_000)
   const settingsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
@@ -52,6 +54,7 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
   }, [open])
   return (
     <header className="relative z-20 flex h-14 shrink-0 items-center gap-4 border-b px-4 exam-line exam-panel">
+      <span className="sr-only" aria-live="polite">{mark ? `${mark} minute${mark > 1 ? 's' : ''} remaining` : ''}</span>
       <div className="flex items-center gap-3">
         <span className="rounded bg-[#e11d2e] px-2 py-0.5 text-sm font-black tracking-wide text-white">IELTS</span>
         <div className="hidden leading-tight sm:block">
@@ -140,7 +143,7 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
               {i === current && (
                 <div className="flex flex-wrap gap-1">
                   {p.numbers.map(x => (
-                    <button key={x.n} onClick={() => onJump(x.n)} aria-label={`Question ${x.n}${x.answered ? ', answered' : ''}${x.flagged ? ', flagged' : ''}`}
+                    <button key={x.n} onClick={() => onJump(x.n)} aria-current={currentNumber === x.n ? 'true' : undefined} aria-label={`Question ${x.n}${x.answered ? ', answered' : ''}${x.flagged ? ', flagged' : ''}`}
                       className={`relative h-7 min-w-7 rounded border text-xs font-semibold transition hover:scale-110 exam-line
                         ${x.answered ? 'bg-[var(--exam-fg)] text-[var(--exam-bg)]' : ''} ${currentNumber === x.n ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}>
                       {x.n}

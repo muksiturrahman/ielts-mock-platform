@@ -15,7 +15,11 @@ const AUTOSAVE_MS = 1000 // after typing pauses; a crash loses at most a second
 
 export default function WritingModule({ test, attempt, onSubmit, exitButton }: ModuleProps) {
   const tasks = test.writing!.tasks.filter(t => !attempt.sections || attempt.sections.includes(t.number))
-  const [part, setPart] = useState(0)
+  const [part, setPartState] = useState(() => Math.min(Math.max(0, attempt.progress.writing?.section ?? 0), tasks.length - 1))
+  const setPart = (i: number) => { // refresh / resume returns to the task the candidate was on
+    setPartState(i)
+    patchAttempt(attempt.id, a => ({ progress: { ...a.progress, writing: { ...a.progress.writing, section: i } } }))
+  }
   const [text, setText] = useState(attempt.writing)
   const [savedAt, setSavedAt] = useState<number>()
   const textRef = useRef(text)

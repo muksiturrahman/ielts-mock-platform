@@ -21,6 +21,8 @@ export interface ModuleProps {
   toggleFlag: (id: string) => void
   setHighlights: (key: string, h: Highlight[]) => void
   exitButton: React.ReactNode
+  /** A dialog (Leave? / You left the window) covers the test: nothing should move on behind it. */
+  paused: boolean
 }
 
 const INSTRUCTIONS: Record<ModuleKey, (minutes: number, timed: boolean) => string[]> = {
@@ -68,11 +70,14 @@ export default function ExamPage() {
   // Anti-cheat: count tab switches / window blur during a running module.
   useEffect(() => {
     if (!started || !attempt) return
+    // Counted when the candidate comes back: unloading (refresh, closing the tab) also fires 'hidden' and never returns.
+    let wasHidden = false
     const onHide = () => {
-      if (document.visibilityState === 'hidden') {
-        patchAttempt(attempt.id, a => ({ tabSwitches: a.tabSwitches + 1 }))
-        setWarning(true)
-      }
+      if (document.visibilityState === 'hidden') { wasHidden = true; return }
+      if (!wasHidden) return
+      wasHidden = false
+      patchAttempt(attempt.id, a => ({ tabSwitches: a.tabSwitches + 1 }))
+      setWarning(true)
     }
     const beforeUnload = (e: BeforeUnloadEvent) => e.preventDefault()
     document.addEventListener('visibilitychange', onHide)
@@ -115,7 +120,7 @@ export default function ExamPage() {
       <LogOut size={14} /> Exit
     </button>
   )
-  const props: ModuleProps = { test, attempt, onSubmit, setAnswer, toggleFlag, setHighlights, exitButton }
+  const props: ModuleProps = { test, attempt, onSubmit, setAnswer, toggleFlag, setHighlights, exitButton, paused: warning || confirmExit }
 
   return (
     <div className="exam flex h-dvh flex-col overflow-hidden" data-contrast={settings.contrast} style={{ ['--exam-scale' as string]: settings.fontScale }}>
@@ -176,10 +181,10 @@ export default function ExamPage() {
         {confirmExit && (
           <Overlay key="exit" labelId="ov-exit">
             <h2 id="ov-exit" className="mb-2 text-xl font-bold">Leave the test?</h2>
-            <p className="mb-5 text-sm text-slate-600">Your answers are saved. You can resume from <b>My results</b>, but timed modules keep counting down.</p>
+            <p className="mb-5 text-sm text-slate-600">Your answers are saved and you can resume from <b>My results</b>. Timed Reading and Writing keep counting down while you're away; Listening and Speaking carry on from where you stopped.</p>
             <div className="flex justify-center gap-2">
               <button className="rounded-md border px-5 py-2" onClick={() => setConfirmExit(false)}>Stay</button>
-              <button className="rounded-md bg-rose-600 px-5 py-2 text-white" onClick={() => { stopSpeaking(); navigate('/history') }}>Leave</button>
+              <button className="rounded-md bg-rose-600 px-5 py-2 text-white" onClick={() => { stopSpeaking(); navigate('/history', { replace: true }) }}>Leave</button>
             </div>
           </Overlay>
         )}

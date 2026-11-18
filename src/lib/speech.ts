@@ -65,7 +65,20 @@ function speakOne(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: num
     u.volume = opts.volume ?? 1
     // Chrome sometimes drops an utterance without firing onend and then stays "speaking", so later lines
     // queue behind it in silence. After a generous limit, clear the queue and move on.
-    const watchdog = setTimeout(() => { speechSynthesis.cancel(); resolve() }, (text.length * 90) / u.rate + 3000)
+    const gen = generation
+    const watchdog = setTimeout(() => {
+      speechSynthesis.cancel()
+      // Phones suspend speech when the screen locks or the app is switched: say this line again once the page
+      // is visible, instead of skipping it (a listening part would otherwise run on in silence).
+      if (!document.hidden) return resolve()
+      const back = () => {
+        if (document.hidden) return
+        document.removeEventListener('visibilitychange', back)
+        if (gen !== generation) resolve()
+        else void speakOne(text, opts).then(resolve)
+      }
+      document.addEventListener('visibilitychange', back)
+    }, (text.length * 90) / u.rate + 3000)
     const done = () => { clearTimeout(watchdog); resolve() }
     u.onend = done
     u.onerror = done

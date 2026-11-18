@@ -44,6 +44,7 @@ async function playPart(
   },
 ) {
   const url = section.audio ? await resolveMediaUrl(section.audio).catch(() => undefined) : undefined
+  let heardShare = 0
   if (url) {
     const el = opts.audioEl
     let stallTimer: ReturnType<typeof setInterval> | undefined
@@ -53,7 +54,13 @@ async function playPart(
       if (opts.resumeAt?.audioPos) el.currentTime = opts.resumeAt.audioPos
       await new Promise<void>((resolve, reject) => {
         let last = Date.now()
+        let lastPos = el.currentTime
         let saved = 0
+        // Timers freeze while the laptop sleeps or the app is in the background: coming back is not a stall.
+        const onVisible = () => { if (!document.hidden) last = Date.now() }
+        document.addEventListener('visibilitychange', onVisible)
+        opts.signal.addEventListener('abort', () => document.removeEventListener('visibilitychange', onVisible))
+        el.addEventListener('ended', () => document.removeEventListener('visibilitychange', onVisible), { once: true })
         el.ontimeupdate = () => {
           last = Date.now()
           if (Math.abs(el.currentTime - saved) >= 3) { saved = el.currentTime; opts.onProgress({ audioPos: saved }) }
@@ -65,12 +72,17 @@ async function playPart(
         el.onplay = () => { last = Date.now(); opts.onPausedChange(false) }
         opts.signal.addEventListener('abort', () => { el.onpause = null; el.pause(); resolve() })
         // A stall is no progress while playing — a paused recording waits for Resume instead.
-        stallTimer = setInterval(() => { if (!el.paused && Date.now() - last > STALL_MS) reject(new Error('stalled')) }, 2000)
+        stallTimer = setInterval(() => {
+          if (el.currentTime !== lastPos) { lastPos = el.currentTime; last = Date.now() } // playing, even if timeupdate was late
+          else if (!el.paused && Date.now() - last > STALL_MS) { document.removeEventListener('visibilitychange', onVisible); reject(new Error('stalled')) }
+        }, 2000)
         el.play().catch(reject) // corrupt file, or the browser blocked playback
       })
       return
     } catch {
       el.onpause = null
+      // How far the recording got: the script carries on from about there instead of replaying the part.
+      if (el.duration > 0 && el.currentTime / el.duration > 0.02) heardShare = el.currentTime / el.duration
       el.pause()
       opts.onPausedChange(false)
       if (opts.signal.aborted) return
@@ -79,10 +91,11 @@ async function playPart(
     }
   }
   if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
-  const from = opts.resumeAt?.scriptLine
+  const lines = parseScript(section.transcript)
+  const from = opts.resumeAt?.scriptLine ?? (heardShare ? Math.floor(lines.length * heardShare) : undefined)
   if (from === undefined) await opts.preview()
   if (opts.signal.aborted) return
-  await playScript(parseScript(section.transcript), { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
+  await playScript(lines, { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
