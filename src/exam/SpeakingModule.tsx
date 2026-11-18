@@ -261,6 +261,22 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton, pa
     speak('Thank you. That is the end of the speaking test.', { voice, rate })
   }
 
+  // While a dialog covers the test the clocks stop: on close, the answer / prep time it took is given back.
+  const pausedAt = useRef<number>(undefined)
+  useEffect(() => {
+    if (paused) { pausedAt.current = Date.now(); return }
+    if (pausedAt.current === undefined) return
+    const away = Date.now() - pausedAt.current
+    pausedAt.current = undefined
+    if (phase !== 'answering' && phase !== 'prep') return
+    setPhaseStart(s => s + away)
+    recRef.current?.resetSilence()
+    if (phase === 'prep') patchAttempt(attempt.id, a => {
+      const prep = a.progress.speaking?.prep
+      return prep ? { progress: { ...a.progress, speaking: { ...a.progress.speaking, prep: { ...prep, at: prep.at + away } } } } : {}
+    })
+  }, [paused]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Timers: Part 2 prep (60s) → "please start speaking now"; answer time limits → auto stop.
   const elapsed = (now - phaseStart) / 1000
   useEffect(() => {

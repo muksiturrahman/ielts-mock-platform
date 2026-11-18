@@ -67,6 +67,7 @@ function speakOne(text: string, opts: { voice?: SpeechSynthesisVoice; rate?: num
     // queue behind it in silence. After a generous limit, clear the queue and move on.
     const gen = generation
     const watchdog = setTimeout(() => {
+      u.onend = u.onerror = null // cancel() fires end/error on some browsers — that would skip the line after all
       speechSynthesis.cancel()
       // Phones suspend speech when the screen locks or the app is switched: say this line again once the page
       // is visible, instead of skipping it (a listening part would otherwise run on in silence).
@@ -167,6 +168,8 @@ export interface RecorderHandle {
   hasSpoken(): boolean
   /** How long the candidate has been silent since they last spoke, in ms (0 while speaking or before speaking). */
   silentMs(): number
+  /** Restart the silence clock (after a dialog covered the test, the candidate wasn't "silent"). */
+  resetSilence(): void
 }
 
 export async function getMicStream(): Promise<MediaStream> {
@@ -245,6 +248,7 @@ export function startRecording(
   return {
     hasSpoken: () => spoke,
     silentMs: () => (spoke && silentSince !== null ? performance.now() - silentSince : 0),
+    resetSilence: () => { if (silentSince !== null) silentSince = performance.now() },
     stop: () =>
       new Promise(resolve => {
         active = false
