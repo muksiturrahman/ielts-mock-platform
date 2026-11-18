@@ -188,7 +188,8 @@ export default function Dashboard() {
           ) : (
             <ul className="divide-y divide-slate-100">
               {[...attempts].sort((a, b) => b.startedAt - a.startedAt).slice(0, 5).map(a => {
-                const o = attemptOverall(a) ?? Object.values(moduleBands(a))[0] // practice: the module band, as My results shows
+                // A one-module practice shows that module's band; a full mock or multi-module attempt waits for its overall.
+                const o = attemptOverall(a) ?? (a.mode !== 'full' && a.modules.length === 1 ? Object.values(moduleBands(a))[0] : undefined)
                 return (
                   <li key={a.id}>
                     <Link to={a.status === 'completed' ? `/results/${a.id}` : `/exam/${a.id}`} className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-slate-50">

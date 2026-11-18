@@ -82,13 +82,13 @@ export function testIssues(t: Test): TestIssues {
 
 /** Chart data the Task 1 renderer reads: a broken one would crash the candidate's screen. */
 export function chartIssue(c: unknown): string | undefined {
-  if (c === undefined) return undefined
+  if (c === undefined || c === null) return undefined
   const x = c as { kind?: unknown; categories?: unknown; series?: unknown }
   if (!x || typeof x !== 'object' || !['bar', 'line', 'pie', 'table'].includes(String(x.kind))) return 'chart type must be bar, line, pie or table'
   if (!Array.isArray(x.categories) || !x.categories.length) return 'chart has no categories'
   if (!Array.isArray(x.series) || !x.series.length) return 'chart has no data series'
   const n = x.categories.length
-  if (!x.series.every(s => s && Array.isArray(s.values) && s.values.length === n && s.values.every((v: unknown) => typeof v === 'number'))) return `every chart series needs ${n} numeric values (one per category)`
+  if (!x.series.every(s => s && Array.isArray(s.values) && s.values.length === n && s.values.every((v: unknown) => v === null || typeof v === 'number'))) return `every chart series needs ${n} values (numbers, or null for missing data)`
   return undefined
 }
 

@@ -181,3 +181,16 @@ describe('round-3 scoring', () => {
     expect(normalizeAnswer('25 percent')).toBe(normalizeAnswer('25 per cent'))
   })
 })
+
+describe('round-3 re-audit word limits', () => {
+  const one = { maxWords: 1, allowNumber: true }
+  it('month-first ordinal dates are one number', () => {
+    expect(isCompletionCorrect('March fifteenth', ['15 March'], one)).toBe(true)
+    expect(isCompletionCorrect('June the first', ['1 June'], one)).toBe(true)
+  })
+  it('percent and digit ordinals are numbers', () => {
+    expect(isCompletionCorrect('25 per cent', ['25%'], one)).toBe(true)
+    expect(isCompletionCorrect('25%', ['25%'], one)).toBe(true)
+    expect(isCompletionCorrect('1st floor', ['first floor'], one)).toBe(true)
+  })
+})

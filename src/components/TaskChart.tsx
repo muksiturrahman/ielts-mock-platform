@@ -18,7 +18,7 @@ export function TaskChart({ chart }: { chart: ChartData }) {
           </thead>
           <tbody>
             {chart.categories.map((c, i) => (
-              <tr key={c}><th className="text-left">{c}</th>{chart.series.map(s => <td key={s.name} className="text-center">{s.values[i]}{chart.unit === '%' ? '%' : ''}</td>)}</tr>
+              <tr key={c}><th className="text-left">{c}</th>{chart.series.map(s => { const v = s.values[i] as number | null; return <td key={s.name} className="text-center">{v ?? '—'}{v != null && chart.unit === '%' ? '%' : ''}</td> })}</tr>
             ))}
           </tbody>
         </table>

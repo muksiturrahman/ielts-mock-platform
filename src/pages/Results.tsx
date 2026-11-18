@@ -241,7 +241,7 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
                           <td className="px-4 py-2.5 font-medium text-emerald-700">{(it.accepted ?? loc?.question.answer)?.join(' / ') ?? it.correct}</td>
                           <td className="px-4 py-2.5">
                             {/* the row toggles by mouse; this button makes the explanation reachable by keyboard */}
-                            <button type="button" aria-expanded={open === it.questionId} aria-label={`${it.isCorrect ? 'Correct' : 'Wrong'} — show explanation for question ${it.number}`}
+                            <button type="button" aria-expanded={open === it.questionId} aria-label={`Question ${it.number}: ${it.isCorrect ? 'correct' : 'wrong'}${loc?.question.explanation ? ' — show explanation' : ''}`}
                               onClick={e => { e.stopPropagation(); setOpen(o => (o === it.questionId ? undefined : it.questionId)) }} className="rounded">
                               {it.isCorrect ? <CheckCircle2 size={18} className="text-emerald-500" /> : <XCircle size={18} className="text-rose-500" />}
                             </button>

@@ -157,8 +157,16 @@ export function useUnsaved(dirty: boolean) {
   useEffect(() => {
     unsaved = dirty
     const warn = (e: BeforeUnloadEvent) => { if (dirty) e.preventDefault() }
+    // In-app links (sidebar, menu) don't fire beforeunload: ask before they discard the edits.
+    const leave = (e: MouseEvent) => {
+      const link = (e.target as Element).closest?.('a[href^="#/"]')
+      if (!dirty || !link || link.getAttribute('href') === location.hash) return
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || link.getAttribute('target') === '_blank') return
+      if (!confirm('You have unsaved changes. Discard them?')) { e.preventDefault(); e.stopPropagation() }
+    }
     window.addEventListener('beforeunload', warn)
-    return () => { unsaved = false; window.removeEventListener('beforeunload', warn) }
+    document.addEventListener('click', leave, true)
+    return () => { unsaved = false; window.removeEventListener('beforeunload', warn); document.removeEventListener('click', leave, true) }
   }, [dirty])
 }
 export const confirmDiscard = () => !unsaved || confirm('You have unsaved changes. Discard them?')

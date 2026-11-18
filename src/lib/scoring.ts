@@ -130,7 +130,7 @@ export function normalizeAnswer(s: string): string {
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
   t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')
-  t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(\\d{1,2})\\b`, 'g'), '$2 $1')
+  t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(?:the\\s+)?(\\d{1,2})\\b`, 'g'), '$2 $1') // "June (the) 1" → "1 june"
   // phone / long numbers written in groups: "07962 551 340" → "07962551340"
   t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   t = t.replace(/[£$€]/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
@@ -170,12 +170,16 @@ function wordCount(s: string): { words: number; numbers: number } {
   // A number in words is still one number ("one hundred"); ordinal words are words ("first two weeks")
   // except in a date ("fifteenth of March" is one number, like "15 March").
   const ord = `(?:(?:${TENS})[-\\s]+)?(?:${Object.keys(ORDINALS).join('|')})`
-  const t = numberWords(s.toLowerCase().replace(new RegExp(`\\b${ord}\\s+(of\\s+)?(${MONTH_RE})\\b`, 'g'), '1 $2'), false)
+  const t = numberWords(s.toLowerCase()
+    .replace(new RegExp(`\\b${ord}\\s+(of\\s+)?(${MONTH_RE})\\b`, 'g'), '1 $2') // fifteenth of March
+    .replace(new RegExp(`\\b(${MONTH_RE})\\s+(the\\s+)?${ord}\\b`, 'g'), '$1 1') // March (the) fifteenth
+    .replace(/\bper\s+cent\b/g, 'percent'), false) // "per cent" is one word, like "%" 
     .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(of\\s+)?(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   const parts = t.trim().split(/\s+/).filter(Boolean)
-  const numbers = parts.filter(p => /^[£$€]?\d[\d,.:/]*(am|pm)?$/i.test(p)).length
+  // "25%", "1st", "10am" are one number each
+  const numbers = parts.filter(p => /^[£$€]?\d[\d,.:/]*(%|st|nd|rd|th|am|pm)?$/i.test(p)).length
   return { words: parts.length - numbers, numbers }
 }
 
