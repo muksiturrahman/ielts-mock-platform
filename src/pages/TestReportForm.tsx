@@ -89,21 +89,29 @@ export function TestReportForm({ attempt }: { attempt: Attempt }) {
   )
 }
 
-const hasMark = (o: unknown): boolean => typeof o === 'number' || (!!o && typeof o === 'object' && Object.values(o).some(hasMark))
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s)
 
-/** How each module was actually marked — never claims AI marking that failed or didn't happen. */
+/** How each module was actually marked — never claims marking that didn't happen. */
 function markingLine(a: Attempt): string {
   const parts: string[] = []
   const auto = (['listening', 'reading'] as const).filter(m => a.results[m])
   if (auto.length) parts.push(`${auto.map(m => m[0].toUpperCase() + m.slice(1)).join('/')} auto-marked`)
+  const who = a.review?.examiner?.trim() || 'examiner'
   for (const m of ['writing', 'speaking'] as const) {
     if (!a.modules.includes(m)) continue
     const name = m[0].toUpperCase() + m.slice(1)
-    const examiner = m === 'writing' ? a.review?.writing : a.review?.speaking
-    if (hasMark(examiner)) parts.push(`${name} examiner-marked (${a.review!.examiner})`)
-    else if (a.results[m]?.status === 'done') parts.push(`${name} AI-marked`)
+    const r = a.results[m]
+    const marks = countMarks(m === 'writing' ? a.review?.writing : a.review?.speaking)
+    const full = m === 'writing' ? 4 * (a.writingTasks?.length ?? 2) : 4
+    const blank = m === 'writing' && r?.status === 'done' && !a.results.writing?.task1?.wordCount && !a.results.writing?.task2?.wordCount
+    if (marks >= full) parts.push(`${name} examiner-marked (${who})`)
+    else if (blank) parts.push(`${name}: no response (0)`)
+    else if (r?.status === 'done') parts.push(marks ? `${name} AI-marked, examiner-reviewed (${who})` : `${name} AI-marked`)
+    else if (marks) parts.push(`${name} partly examiner-marked (${who})`)
     else parts.push(`${name} not marked`)
   }
   return parts.join(' · ') || 'Not marked'
 }
+
+/** Number of criteria an examiner actually set (nested objects of bands). */
+const countMarks = (o: unknown): number => (typeof o === 'number' ? 1 : o && typeof o === 'object' ? Object.values(o).reduce((n: number, v) => n + countMarks(v), 0) : 0)

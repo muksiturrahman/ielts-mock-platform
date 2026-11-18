@@ -52,8 +52,8 @@ Open **Settings → AI marking**, pick a provider, paste a key, then click **Tes
 | **OpenAI** | Paid | — |
 
 Keys are stored only in your browser and are sent only to the provider you picked. Each provider's key is remembered, so if one free tier hits its daily limit you can switch to another.
-Leave **Model** on **Automatic** (recommended): the app tests the best models your key can use, picks one that answers, and switches by itself if it gets busy. Or pick a fixed model from the list.
-Without a key, Listening and Reading are still fully marked, and Writing and Speaking wait with a **Mark now** button.
+Leave **Model** on **Automatic** (recommended). For Gemini and OpenAI the app tests the best models your key can use and keeps one that answers, switching by itself if it gets busy; Groq, OpenRouter and Anthropic start from a sensible default. Or pick a fixed model from the list.
+Without a key, Listening and Reading are still fully marked, and Writing and Speaking wait with a **Mark now** button (a Writing task left blank scores 0 straight away).
 
 Use **Chrome or Edge** for Speaking: live transcription relies on the Web Speech API.
 

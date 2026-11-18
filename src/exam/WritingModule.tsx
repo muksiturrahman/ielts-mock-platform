@@ -5,7 +5,7 @@ import { SvgFigure } from '../components/RichContent'
 import { Img } from './QuestionGroupView'
 import { TaskChart } from '../components/TaskChart'
 import { countWords } from '../lib/scoring'
-import { patchAttempt } from '../lib/store'
+import { getDB, patchAttempt } from '../lib/store'
 import { QuestionNav, SplitPane, TopBar, useDeadline } from './ExamChrome'
 import type { ModuleProps } from './ExamPage'
 import type { Attempt } from '../lib/types'
@@ -23,6 +23,9 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
 
   const savedRef = useRef(attempt.writing) // what this tab last saved or loaded
   const save = useCallback(() => {
+    // Writing already submitted (e.g. from another tab): a late save from this tab must not change it.
+    const stored = getDB().attempts.find(a => a.id === attempt.id)
+    if (!stored || stored.progress.writing?.submittedAt) return
     savedRef.current = textRef.current
     patchAttempt(attempt.id, { writing: textRef.current })
     setSavedAt(Date.now())

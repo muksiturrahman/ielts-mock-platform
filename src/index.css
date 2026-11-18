@@ -104,6 +104,10 @@ body {
 .dark .hover\:bg-slate-800:hover:not(.exam *) { background-color: #4338ca }
 /* brand-600 text (#4f46e5) is ~2.8:1 on #111827 — lighter indigo for links in dark mode */
 .dark .text-brand-600 { color: #a5b4fc }
+.dark .text-rose-600 { color: #fb7185 }
+.dark .text-slate-400 { color: #8b9ab0 } /* the remapped slate-400 (#64748b) is ~3.7:1 on cards */
+/* Exam in the dark app theme (not the official yellow/white-on-black modes): dark buttons need a visible shape */
+.dark .exam:not([data-contrast='yellow-black']):not([data-contrast='white-black']) .bg-slate-900 { background-color: #1d4ed8 }
 .dark .toggle-knob { background-color: #f8fafc }
 .dark .recharts-cartesian-grid line, .dark .recharts-polar-grid line, .dark .recharts-polar-grid polygon { stroke: #334155 }
 .dark .input { background-color: #0b1120; color: #e2e8f0 }
@@ -165,7 +169,7 @@ body {
 @media print {
   .no-print { display: none !important }
   body { background: #fff }
-  .print-page { box-shadow: none !important; border: none !important; margin: 0 !important }
+  .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; print-color-adjust: exact; -webkit-print-color-adjust: exact }
 }
 
 @media (prefers-reduced-motion: reduce) {

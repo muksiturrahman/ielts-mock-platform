@@ -128,7 +128,8 @@ function IconBtn({ children, title, onClick, danger }: { children: React.ReactNo
 function Analytics() {
   const attempts = useDB(d => d.attempts)
   const tests = useDB(d => d.tests).filter(t => !t.deleted) // same list as the Library
-  const done = attempts.filter(a => a.status === 'completed')
+  const visible = new Set(tests.map(t => t.id))
+  const done = attempts.filter(a => a.status === 'completed' && visible.has(a.testId))
   // Per-question difficulty across attempts → hardest items first.
   const items = new Map<string, { label: string; c: number; t: number }>()
   for (const a of done) {
@@ -148,7 +149,8 @@ function Analytics() {
     const os = as.map(attemptOverall).filter((x): x is number => x !== undefined)
     return { name: t.title.length > 22 ? `${t.title.slice(0, 22)}…` : t.title, attempts: as.length, avg: os.length ? os.reduce((a, b) => a + b, 0) / os.length : undefined }
   }).filter(x => x.attempts)
-  const aiMarked = done.filter(a => a.results.writing?.status === 'done' || a.results.speaking?.status === 'done').length
+  const wroteSomething = (a: (typeof done)[number]) => Boolean(a.results.writing?.task1?.wordCount || a.results.writing?.task2?.wordCount)
+  const aiMarked = done.filter(a => (a.results.writing?.status === 'done' && wroteSomething(a)) || a.results.speaking?.status === 'done').length
 
   return (
     <div className="space-y-6">

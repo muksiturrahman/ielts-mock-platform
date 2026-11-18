@@ -176,7 +176,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
   }, [audioPaused])
 
   const started = playing !== null || progress.section === -1
-  const interrupted = !started && (progress.section > 0 || Boolean(progress.audioPos || progress.scriptLine))
+  const interrupted = !started && (progress.section > 0 || Boolean(progress.audioPos) || progress.scriptLine !== undefined)
   const parts = sections.map(s => partNav(s.groups, attempt.answers, attempt.flags, s.title))
   const unanswered = parts.flatMap(p => p.numbers).filter(n => !n.answered).length
   const section = sections[view]

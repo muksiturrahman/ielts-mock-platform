@@ -167,7 +167,9 @@ export function jumpTo(n: number, tries = 30) {
   // Switching part animates the old one out first: wait (up to ~0.5 s) for the question to mount.
   if (!el) { if (tries > 0) requestAnimationFrame(() => jumpTo(n, tries - 1)); return }
   el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  setTimeout(() => (el?.querySelector('input,select') as HTMLElement | null ?? (el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : null))?.focus({ preventScroll: true }), 350)
+  // An empty "choose TWO" anchor focuses its group's first checkbox.
+  const target = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector<HTMLElement>('input,select') ?? (el.childElementCount ? null : el.parentElement?.querySelector<HTMLElement>('input,select'))
+  setTimeout(() => target?.focus({ preventScroll: true }), 350)
 }
 
 /** Draggable split pane (passage | questions), like the CD-IELTS layout. */

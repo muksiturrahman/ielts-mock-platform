@@ -67,7 +67,7 @@ export default function Results() {
         </div>
       </motion.section>
 
-      <div className="no-print mb-6 flex gap-1 overflow-x-auto rounded-2xl bg-white p-1 shadow-sm">
+      <div role="tablist" className="no-print mb-6 flex gap-1 overflow-x-auto rounded-2xl bg-white p-1 shadow-sm">
         {tabs.map(t => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={cx('relative whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold capitalize transition', tab === t ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
             {tab === t && <motion.span layoutId="result-tab" className="absolute inset-0 rounded-xl bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
@@ -352,11 +352,11 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev?: Wri
           <Annotated text={text} notes={(ev?.annotations ?? []).map((a: Annotation) => ({ quote: a.quote, label: a.type, detail: `${a.issue} → ${a.suggestion}`, tone: TONE[a.type] ?? '' }))} />
         </div>
       </div>
-      {ev && <div className="mt-6 grid gap-4 md:grid-cols-2">
+      {ev && ev.wordCount > 0 && <div className="mt-6 grid gap-4 md:grid-cols-2">
         <List title="Strengths" items={ev.strengths} tone="text-emerald-600" />
         <List title="How to reach the next band" items={ev.improvements} tone="text-brand-600" />
       </div>}
-      {ev && <div className="mt-6">
+      {ev?.modelAnswer && <div className="mt-6">
         <Button variant="secondary" onClick={() => setShowModel(s => !s)}><Sparkles size={15} /> {showModel ? 'Hide' : 'Show'} Band 8.5+ model answer</Button>
         <AnimatePresence>
           {showModel && (

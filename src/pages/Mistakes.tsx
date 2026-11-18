@@ -45,7 +45,8 @@ export default function Mistakes() {
   const types = [...new Set(objective.map(m => typeLabel(m.item.type)))]
   const shown = objective.filter(m => type === 'all' || typeLabel(m.item.type) === type)
   const worst = Object.entries(
-    objective.reduce<Record<string, number>>((acc, m) => ({ ...acc, [typeLabel(m.item.type)]: (acc[typeLabel(m.item.type)] ?? 0) + 1 }), {}),
+    // All of this module's mistakes, whatever the due/mastered view; hidden in Mastered (advice about mastered items is wrong).
+    mistakes.filter(m => m.module === tab).reduce<Record<string, number>>((acc, m) => ({ ...acc, [typeLabel(m.item.type)]: (acc[typeLabel(m.item.type)] ?? 0) + 1 }), {}),
   ).sort((a, b) => b[1] - a[1])[0]
 
   return (
@@ -72,7 +73,7 @@ export default function Mistakes() {
         ))}
       </div>
 
-      {worst && (tab === 'listening' || tab === 'reading') && (
+      {worst && view !== 'mastered' && (tab === 'listening' || tab === 'reading') && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
           <Target size={18} className="shrink-0" />
           <span>Your most frequent mistake type is <b>{worst[0]}</b> ({worst[1]} wrong). Focus your next practice there.</span>

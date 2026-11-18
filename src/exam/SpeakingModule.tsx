@@ -96,6 +96,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   const streamRef = useRef(stream)
   streamRef.current = stream
   const startedRef = useRef(false)
+  const [saving, setSaving] = useState(false) // an answer is still being stored: Resume would ask the same question twice
   // Bumped when the mic is lost: async steps from before it (an ask() chain, a save) must not carry on.
   const genRef = useRef(0)
   const live = (gen: number) => alive.current && gen === genRef.current
@@ -236,6 +237,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     const gen = genRef.current
     recRef.current = null
     setPhase('saving')
+    setSaving(true)
     const r = await rec.stop()
     const recordingId = await putMedia(r.blob).catch(() => undefined)
     const answer: SpeakingAnswer = {
@@ -246,7 +248,9 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     patchAttempt(attempt.id, a => ({ speaking: [...a.speaking, answer], scratchpad: notes }))
     // Examiners stop a long answer politely; Part 2 always ends with "Thank you."
     if (interrupted || step.cue) pendingAck.current = 'Thank you.'
-    if (gen !== genRef.current) return setIndex(index + 1) // mic lost while saving: resume at the next question
+    setSaving(false)
+    // Mic lost while saving: resume at the next question — or simply end if that was the last one.
+    if (gen !== genRef.current) return index + 1 >= steps.length ? finish() : setIndex(index + 1)
     void ask(index + 1)
   }
 
@@ -310,7 +314,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
               {!stream ? (
                 <button onClick={enableMic} className="flex items-center gap-2 rounded-md bg-[#1d4ed8] px-5 py-2.5 font-semibold text-white"><Mic size={18} /> Allow microphone</button>
               ) : (
-                <button onClick={start} className="rounded-md bg-[#1d4ed8] px-6 py-3 font-semibold text-white shadow-lg">{index > 0 ? 'Resume speaking test' : 'Start speaking test'}</button>
+                <button onClick={start} disabled={saving} className="rounded-md bg-[#1d4ed8] px-6 py-3 font-semibold text-white shadow-lg disabled:opacity-50">{index > 0 ? 'Resume speaking test' : 'Start speaking test'}</button>
               )}
             </motion.div>
           ) : phase === 'done' ? (
