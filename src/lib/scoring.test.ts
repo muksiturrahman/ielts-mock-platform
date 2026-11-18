@@ -158,3 +158,26 @@ describe('audit round 2 re-check', () => {
     expect(isCompletionCorrect('£3.50', ['3.50'])).toBe(true)
   })
 })
+
+describe('round-3 scoring', () => {
+  const g3 = { maxWords: 3, allowNumber: true }
+  it('number words and ordinals in a key typed exactly are accepted', () => {
+    expect(isCompletionCorrect('first two weeks', ['first two weeks'], g3)).toBe(true)
+    expect(isCompletionCorrect('one or two', ['one or two'], g3)).toBe(true)
+    expect(isCompletionCorrect('9 to 5', ['9 to 5'], g3)).toBe(true)
+    expect(isCompletionCorrect('3 or 4', ['3'], g3)).toBe(false) // two numbers where the key has one
+    expect(isCompletionCorrect('fifteenth of March', ['15 March'], { maxWords: 1, allowNumber: true })).toBe(true)
+  })
+  it('typed digits are not multiplied, only the word hundred', () => {
+    expect(normalizeAnswer('5 100')).not.toBe('500')
+    expect(normalizeAnswer('two hundred')).toBe('200')
+  })
+  it('more UK/US spellings and percent forms', () => {
+    expect(normalizeAnswer('kilometers')).toBe(normalizeAnswer('kilometres'))
+    expect(normalizeAnswer('fibres')).toBe(normalizeAnswer('fibers'))
+    expect(normalizeAnswer('labelled')).toBe(normalizeAnswer('labeled'))
+    expect(normalizeAnswer('telling')).toBe('telling')
+    expect(normalizeAnswer('25%')).toBe(normalizeAnswer('25 per cent'))
+    expect(normalizeAnswer('25 percent')).toBe(normalizeAnswer('25 per cent'))
+  })
+})

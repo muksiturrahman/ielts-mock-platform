@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getDB, setSettings } from './store'
+import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from './prompts'
 import { countWords, criteriaBand } from './scoring'
 import type { AIProvider, SpeakingAnswer, SpeakingMetrics, SpeakingResult, WritingTask, WritingTaskEval } from './types'
 
@@ -298,7 +299,7 @@ export async function testConnection(): Promise<string> {
 }
 
 // ---------- schemas (Claude structured outputs: every object closed, every property required) ----------
-const band = { type: 'number', description: 'Band 0–9 in 0.5 steps' }
+const band = { type: 'integer', description: 'Whole band 0–9 (no half bands per criterion)' }
 const criterion = {
   type: 'object',
   properties: { band, comment: { type: 'string', description: '2–4 sentences referencing the band descriptors' } },
@@ -345,7 +346,7 @@ const SPEAKING_SCHEMA = obj({
 const clampBand = (b: unknown) => {
   const n = Number(b)
   if (!Number.isFinite(n)) throw new AIError('The AI returned an incomplete evaluation. Try again or pick a stronger model.')
-  return Math.min(9, Math.max(0, Math.round(n * 2) / 2))
+  return Math.min(9, Math.max(0, Math.round(n))) // criteria are whole bands in real IELTS marking
 }
 const asCriterion = (c: unknown) => {
   const x = (c ?? {}) as { band?: unknown; comment?: unknown }
@@ -371,7 +372,7 @@ export async function evaluateWriting(task: WritingTask, response: string, varia
     return { criteria: { task: zero, coherence: zero, lexical: zero, grammar: zero }, annotations: [], strengths: [], improvements: ['Write a response: an unanswered task scores 0.'], modelAnswer: '', wordCount: 0, band: 0 }
   }
   const visual = task.number === 1 && variant === 'academic'
-    ? `\n\nVisual information (the candidate saw this as a ${task.kind}):\n${task.visualDescription ?? JSON.stringify(task.chart)}`
+    ? `\n\nVisual information (the candidate saw this as a ${task.kind}):\n${task.visualDescription?.trim() || (task.chart ? JSON.stringify(task.chart) : '(no description provided — mark the overview and key features from the candidate\'s text only)')}`
     : ''
   const user = `IELTS ${variant === 'academic' ? 'Academic' : 'General Training'} Writing Task ${task.number}.
 Minimum words: ${task.minWords}. Candidate wrote: ${words} words.
@@ -381,7 +382,7 @@ ${task.prompt}${visual}
 
 ${asCandidateText('candidate_response', response || '(no response)')}`
   const r = await callStructured<{ criteria: Record<string, unknown>; annotations?: unknown[]; strengths?: unknown; improvements?: unknown; modelAnswer?: unknown }>(
-    getDB().settings.writingPrompt, user, WRITING_SCHEMA,
+    getDB().settings.writingPrompt.trim() || DEFAULT_WRITING_PROMPT, user, WRITING_SCHEMA, // a cleared rubric falls back to the default
   )
   const keys = ['task', 'coherence', 'lexical', 'grammar'] as const
   const criteria = Object.fromEntries(keys.map(k => [k, response.trim() ? asCriterion(r.criteria?.[k]) : { band: 0, comment: 'No response.' }])) as WritingTaskEval['criteria']
@@ -411,7 +412,7 @@ export async function evaluateSpeaking(answers: SpeakingAnswer[], metrics: Speak
 - Unique word ratio: ${metrics.uniqueWordRatio}
 
 ${asCandidateText('transcripts', transcript)}`
-  const r = await callStructured<{ criteria: Record<string, unknown>; notes?: unknown[]; strengths?: unknown; improvements?: unknown }>(getDB().settings.speakingPrompt, user, SPEAKING_SCHEMA)
+  const r = await callStructured<{ criteria: Record<string, unknown>; notes?: unknown[]; strengths?: unknown; improvements?: unknown }>(getDB().settings.speakingPrompt.trim() || DEFAULT_SPEAKING_PROMPT, user, SPEAKING_SCHEMA)
   const keys = ['fluency', 'lexical', 'grammar', 'pronunciation'] as const
   const criteria = Object.fromEntries(keys.map(k => [k, asCriterion(r.criteria?.[k])])) as NonNullable<SpeakingResult['criteria']>
   return {

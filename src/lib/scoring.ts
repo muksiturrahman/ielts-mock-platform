@@ -57,7 +57,7 @@ const NUMBER_WORDS: Record<string, string> = {
   zero: '0', one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9',
   ten: '10', eleven: '11', twelve: '12', thirteen: '13', fourteen: '14', fifteen: '15', sixteen: '16',
   seventeen: '17', eighteen: '18', nineteen: '19', twenty: '20', thirty: '30', forty: '40', fifty: '50', sixty: '60',
-  seventy: '70', eighty: '80', ninety: '90', hundred: '100',
+  seventy: '70', eighty: '80', ninety: '90',
 }
 // Ordinals ("fifteenth March", "first floor") become digits on both sides, like "15th" / "1st".
 const ORDINALS: Record<string, number> = {
@@ -67,7 +67,10 @@ const ORDINALS: Record<string, number> = {
   seventieth: 70, eightieth: 80, ninetieth: 90,
 }
 // British ↔ American spellings accepted in IELTS. shortcut: fixed list + -ise/-ize rule, extend when a test needs more.
+const LL_STEMS = new Set('travel label model cancel fuel signal level counsel equal total channel tunnel dial panel quarrel marvel jewel'.split(' '))
 const SPELLING: Record<string, string> = {
+  fibre: 'fiber', calibre: 'caliber', judgement: 'judgment', enrol: 'enroll', dialogue: 'dialog',
+  analogue: 'analog', sceptical: 'skeptical', manoeuvre: 'maneuver', paediatric: 'pediatric', oestrogen: 'estrogen',
   colour: 'color', favour: 'favor', favourite: 'favorite', centre: 'center', theatre: 'theater', metre: 'meter',
   litre: 'liter', programme: 'program', neighbour: 'neighbor', neighbourhood: 'neighborhood', harbour: 'harbor',
   labour: 'labor', behaviour: 'behavior', honour: 'honor', humour: 'humor', jewellery: 'jewelry', cheque: 'check',
@@ -83,7 +86,7 @@ const MONTH_RE = MONTHS.join('|')
 
 // Words spelt -ise (UK) or -ize (US). A list, not a rule: "promise", "expertise", "exercise" have no -ize form.
 const ISE_STEMS = new Set((
-  'agon antagon apolog critic digit item mechan public author capital categor central character civil colon commercial computer container '
+  'agon antagon apolog critic digit item mechan public pasteur oxid moistur author capital categor central character civil colon commercial computer container '
   + 'criminal custom decentral democrat dramat econom emphas energ equal evangel external familiar fantas fertil '
   + 'final fossil general glamor global harmon hospital hypothes ideal immun individual industrial internal italic '
   + 'jeopard legal legitim liberal local magnet material maxim memor mesmer metabol miniatur minim mobil modern '
@@ -96,6 +99,10 @@ function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
   if (SPELLING[w]) return SPELLING[w]
   if (w.endsWith('s') && SPELLING[w.slice(0, -1)]) return `${SPELLING[w.slice(0, -1)]}s` // colours, metres
+  const tre = w.match(/^(\w*(?:metre|litre))(s?)$/) // kilometre, centimetre, millilitre…
+  if (tre) return `${tre[1].slice(0, -2)}er${tre[2]}`
+  const ll = w.match(/^(\w+)ll(ed|ing|er|ers)$/) // travelled, labelling, modeller (UK doubles the l)
+  if (ll && LL_STEMS.has(ll[1] + 'l')) return `${ll[1]}l${ll[2]}`
   const ise = w.match(/^(.{3,})is(e|es|ed|ing|ation|ations|er|ers|able)$/)
   if (ise && ISE_STEMS.has(ise[1])) return `${ise[1]}iz${ise[2]}`
   const yse = w.match(/^(anal|paral|catal|electrol|dial)ys(e|es|ed|ing|er|ers)$/)
@@ -104,11 +111,13 @@ function normWord(w: string): string {
 }
 
 /** Number words → digits: "twenty-five" → 25, "a hundred and fifty" → 150, "one" → 1. */
-function numberWords(t: string): string {
-  t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${Object.keys(ORDINALS).slice(0, 9).join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ORDINALS[b]))
+function numberWords(t: string, ordinals = true): string {
+  if (ordinals) t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${Object.keys(ORDINALS).slice(0, 9).join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ORDINALS[b]))
   t = t.replace(new RegExp(`\\b(${TENS})[-\\s]+(${ONES.join('|')})\\b`, 'g'), (_m, a, b) => String(TENS_VALUE[a] + ONES.indexOf(b) + 1))
-  t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? (ORDINALS[w] ? String(ORDINALS[w]) : w))
-  t = t.replace(/\b(a|\d{1,2})\s+100(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
+  t = t.replace(/\b[a-z]+\b/g, w => NUMBER_WORDS[w] ?? (ordinals && ORDINALS[w] ? String(ORDINALS[w]) : w))
+  // Only the words "hundred"/"thousand" multiply — typed digits like "5 100" stay as written.
+  t = t.replace(/\b(a|\d{1,2})\s+hundred(?:\s+and\s+(\d{1,2}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 100 + Number(rest ?? 0)))
+  t = t.replace(/\bhundred\b/g, '100')
   // "two thousand", "a thousand and fifty", "3 thousand 500" → digits
   t = t.replace(/\b(a|\d{1,3})\s+thousand(?:\s+(?:and\s+)?(\d{1,3}))?\b/g, (_m, n, rest) => String((n === 'a' ? 1 : Number(n)) * 1000 + Number(rest ?? 0)))
   return t.replace(/\bthousand\b/g, '1000')
@@ -125,6 +134,7 @@ export function normalizeAnswer(s: string): string {
   // phone / long numbers written in groups: "07962 551 340" → "07962551340"
   t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   t = t.replace(/[£$€]/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
+  t = t.replace(/(\d)\s*%/g, '$1 percent').replace(/\bper\s+cent\b/g, 'percent') // 25% = 25 percent = 25 per cent
   // units: "100km" → "100 km"
   t = t.replace(/(\d)([a-z]{2,})\b/g, '$1 $2')
   // "10:30" and "10.30" (times) or "3.50" (prices) all written one way, so either style matches; "09.30" = "9.30"
@@ -157,7 +167,10 @@ export function expandAccepted(answer: string): string[] {
 
 function wordCount(s: string): { words: number; numbers: number } {
   // A date ("21 March 2024") or grouped digits ("07962 551 340") count as one number, as in the real test.
-  const t = numberWords(s.toLowerCase())
+  // A number in words is still one number ("one hundred"); ordinal words are words ("first two weeks")
+  // except in a date ("fifteenth of March" is one number, like "15 March").
+  const ord = `(?:(?:${TENS})[-\\s]+)?(?:${Object.keys(ORDINALS).join('|')})`
+  const t = numberWords(s.toLowerCase().replace(new RegExp(`\\b${ord}\\s+(of\\s+)?(${MONTH_RE})\\b`, 'g'), '1 $2'), false)
     .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(of\\s+)?(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
@@ -172,7 +185,8 @@ export function isCompletionCorrect(given: string, accepted: string[], group?: P
     const { words, numbers } = wordCount(given)
     // Exceeding the word limit is marked wrong in the real test.
     if (words > group.maxWords || (numbers > 0 && !group.allowNumber && words + numbers > group.maxWords)) return false
-    if (numbers > 1) return false
+    // "A NUMBER" means one — unless the key itself has more (e.g. "9 to 5"), which the candidate can't be blamed for.
+    if (numbers > 1 && !accepted.flatMap(expandAccepted).some(k => wordCount(k).numbers > 1)) return false
   }
   const g = normalizeAnswer(given)
   return accepted.flatMap(expandAccepted).includes(g)

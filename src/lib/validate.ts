@@ -1,4 +1,5 @@
 import type { QuestionGroup, Test } from './types'
+import { isCompletionCorrect } from './scoring'
 
 export interface TestIssues {
   /** Problems that break the exam or its scoring — publishing is blocked. */
@@ -32,6 +33,12 @@ function groupIssues(g: QuestionGroup, where: string): string[] {
   for (const q of g.questions) {
     if (!Number.isInteger(q.number) || q.number < 1) out.push(`${where}: a question has no valid number`)
     if (!q.answer.length || !q.answer.some(a => a.trim())) { out.push(`${where} Q${q.number}: no answer key`); continue }
+    if (g.type === 'completion' && g.maxWords) {
+      // A key longer than the limit can never be marked correct ("freeze dried" with ONE WORD ONLY).
+      const tooLong = q.answer.flatMap(a => a.split(/\s+\/\s+/)).map(a => a.replace(/([a-z()'-]+)(\/[a-z()'-]+)+/gi, '$1')).filter(a => a.trim()
+        && !isCompletionCorrect(a.replace(/[()]/g, ''), q.answer, g) && !isCompletionCorrect(a.replace(/\([^)]*\)\s*/g, ''), q.answer, g))
+      if (tooLong.length) out.push(`${where} Q${q.number}: answer "${tooLong.join('", "')}" is longer than the word limit, so it can never be marked correct`)
+    }
     const keys = g.type === 'mcq' ? (q.options ?? []).map(o => o.key.toUpperCase()) : optionKeys
     if (keys) {
       const bad = q.answer.filter(a => !keys.includes(a.trim().toUpperCase()))
@@ -63,7 +70,26 @@ export function testIssues(t: Test): TestIssues {
   }
   const taskNums = (t.writing?.tasks ?? []).map(w => w.number)
   if (new Set(taskNums).size !== taskNums.length) blocking.push('Writing: two tasks have the same task number')
+  for (const w of t.writing?.tasks ?? []) {
+    const bad = chartIssue(w.chart)
+    if (bad) blocking.push(`Writing Task ${w.number}: ${bad}`)
+    if (t.variant === 'academic' && w.number === 1 && !w.chart && !w.visualDescription?.trim()) {
+      warnings.push('Writing Task 1: add the chart data or a description of the visual, or the AI marks it without seeing what the candidate saw')
+    }
+  }
   return { blocking: [...new Set(blocking)], warnings }
+}
+
+/** Chart data the Task 1 renderer reads: a broken one would crash the candidate's screen. */
+export function chartIssue(c: unknown): string | undefined {
+  if (c === undefined) return undefined
+  const x = c as { kind?: unknown; categories?: unknown; series?: unknown }
+  if (!x || typeof x !== 'object' || !['bar', 'line', 'pie', 'table'].includes(String(x.kind))) return 'chart type must be bar, line, pie or table'
+  if (!Array.isArray(x.categories) || !x.categories.length) return 'chart has no categories'
+  if (!Array.isArray(x.series) || !x.series.length) return 'chart has no data series'
+  const n = x.categories.length
+  if (!x.series.every(s => s && Array.isArray(s.values) && s.values.length === n && s.values.every((v: unknown) => typeof v === 'number'))) return `every chart series needs ${n} numeric values (one per category)`
+  return undefined
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
@@ -81,5 +107,6 @@ export function isTestShape(t: unknown): t is Test {
   const speaking = sp === undefined || (isObj(sp) && isObj(sp.part1) && isObj(sp.part2) && isObj(sp.part3)
     && Array.isArray(sp.part1.topics) && Array.isArray(sp.part2.bullets) && Array.isArray(sp.part3.questions))
   if (!(sectioned(t.listening) && sectioned(t.reading) && writing && speaking)) return false
+  if ((t.writing as { tasks?: { chart?: unknown }[] } | undefined)?.tasks?.some(w => chartIssue(w.chart))) return false // would crash Task 1
   try { testIssues(t as unknown as Test); return true } catch { return false } // the editor and publish run this too
 }

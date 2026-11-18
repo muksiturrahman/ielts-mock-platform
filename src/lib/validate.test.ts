@@ -61,3 +61,16 @@ describe('isTestShape (imports and backups)', () => {
     expect(isTestShape(base)).toBe(true)
   })
 })
+
+describe('round-3 publish checks', () => {
+  const base = { id: 't', title: 'T', variant: 'academic' as const, status: 'draft' as const, createdAt: 0, updatedAt: 0 }
+  it('blocks a completion key longer than its word limit', () => {
+    const t = { ...base, reading: { sections: [{ id: 's', title: 'P1', passage: 'x', groups: [{ id: 'g', type: 'completion' as const, instructions: 'ONE WORD ONLY', maxWords: 1, questions: [{ id: 'q', number: 1, prompt: 'A {{1}}', answer: ['freeze dried'] }] }] }] } }
+    expect(testIssues(t as never).blocking.join()).toMatch(/longer than the word limit/)
+  })
+  it('blocks a malformed chart and rejects it on import', () => {
+    const t = { ...base, writing: { tasks: [{ id: 'w', number: 1 as const, prompt: 'Describe', minWords: 150, chart: { kind: 'bar', title: 'x', categories: ['a', 'b'], series: [{ name: 's' }] } }] } }
+    expect(testIssues(t as never).blocking.join()).toMatch(/numeric values/)
+    expect(isTestShape(t)).toBe(false)
+  })
+})

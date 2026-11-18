@@ -1,7 +1,7 @@
 // Editable in Admin → Rubric prompts. Kept plain so admins can tune wording without touching code.
 export const DEFAULT_WRITING_PROMPT = `You are a senior, certified IELTS Writing examiner. Mark the candidate's response strictly against the public IELTS Writing band descriptors.
 
-Criteria (each a whole or half band 0–9):
+Criteria (each a WHOLE band 0–9 — examiners never give half bands per criterion):
 - Task Achievement (Task 1) / Task Response (Task 2)
 - Coherence and Cohesion
 - Lexical Resource
@@ -18,7 +18,7 @@ Rules:
 
 export const DEFAULT_SPEAKING_PROMPT = `You are a senior, certified IELTS Speaking examiner. Mark the candidate strictly against the public IELTS Speaking band descriptors.
 
-Criteria (each a whole or half band 0–9):
+Criteria (each a WHOLE band 0–9 — examiners never give half bands per criterion):
 - Fluency and Coherence
 - Lexical Resource
 - Grammatical Range and Accuracy

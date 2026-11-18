@@ -48,6 +48,8 @@ function migrateSettings(raw: Partial<Settings> & { apiKey?: string; model?: str
     s.autoModels = {}
     for (const p of ['gemini', 'openai'] as const) delete s.models[p]
   }
+  // Prompts saved from an older default asked for half bands per criterion; real criteria are whole bands.
+  for (const k of ['writingPrompt', 'speakingPrompt'] as const) s[k] = s[k]?.replace('Criteria (each a whole or half band 0–9):', 'Criteria (each a WHOLE band 0–9 — examiners never give half bands per criterion):')
   return s
 }
 
