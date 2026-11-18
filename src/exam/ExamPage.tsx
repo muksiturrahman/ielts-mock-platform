@@ -5,6 +5,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { MODULE_LABEL, moduleMinutes, startModule, submitModule } from '../lib/attempts'
 import { patchAttempt, useDB } from '../lib/store'
 import { useDialogFocus } from '../components/ui'
+import { setLeaveGuard } from '../lib/leaveGuard'
 import type { AnswerValue, Attempt, Highlight, ModuleKey, Test } from '../lib/types'
 import { stopSpeaking } from '../lib/speech'
 import ListeningModule from './ListeningModule'
@@ -84,6 +85,12 @@ export default function ExamPage() {
 
   useEffect(() => () => stopSpeaking(), [])
 
+  // Browser Back / Android back-swipe asks with the usual Leave dialog instead of leaving.
+  useEffect(() => {
+    setLeaveGuard(() => setConfirmExit(true))
+    return () => setLeaveGuard(null)
+  }, [])
+
   const id = attempt?.id
   const setAnswer = useCallback((qid: string, v: AnswerValue) => id && patchAttempt(id, a => ({ answers: { ...a.answers, [qid]: v } })), [id])
   const toggleFlag = useCallback((qid: string) => id && patchAttempt(id, a => ({ flags: a.flags.includes(qid) ? a.flags.filter(f => f !== qid) : [...a.flags, qid] })), [id])
@@ -111,7 +118,7 @@ export default function ExamPage() {
   const props: ModuleProps = { test, attempt, onSubmit, setAnswer, toggleFlag, setHighlights, exitButton }
 
   return (
-    <div className="exam flex h-screen flex-col overflow-hidden" data-contrast={settings.contrast} style={{ ['--exam-scale' as string]: settings.fontScale }}>
+    <div className="exam flex h-dvh flex-col overflow-hidden" data-contrast={settings.contrast} style={{ ['--exam-scale' as string]: settings.fontScale }}>
       <AnimatePresence mode="wait">
         {between ? (
           <Interlude key="between" next={between} onContinue={() => setBetween(null)} />

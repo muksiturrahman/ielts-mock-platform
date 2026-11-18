@@ -96,10 +96,10 @@ export function stopSpeaking() {
 /** Plays a whole script once. `getVolume` is read per utterance so the volume slider works mid-play. */
 export async function playScript(
   lines: ScriptLine[],
-  opts: { rate: number; getVolume: () => number; onLine?: (i: number) => void; signal: AbortSignal },
+  opts: { rate: number; getVolume: () => number; onLine?: (i: number) => void; signal: AbortSignal; from?: number },
 ) {
   const speakers = [...new Set(lines.map(l => l.speaker).filter(s => s !== 'NARRATOR'))]
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = opts.from ?? 0; i < lines.length; i++) {
     if (opts.signal.aborted) return
     opts.onLine?.(i)
     const l = lines[i]

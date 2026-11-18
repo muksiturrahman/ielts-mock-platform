@@ -16,6 +16,9 @@ const PREVIEW_SEC = 30
 
 /** No progress for this long while "playing" = stalled network/decoder: give up on the file. */
 const STALL_MS = 20_000
+// A tiny silent WAV. Playing it inside the click "unlocks" the audio element on iOS, which otherwise blocks
+// play() once the click handler has awaited anything (the IndexedDB lookup).
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
 
 /**
  * Plays one listening part once: uploaded audio if it plays, otherwise the script via text-to-speech.
@@ -23,7 +26,14 @@ const STALL_MS = 20_000
  */
 async function playPart(
   section: { transcript: string; audio?: string; context: string },
-  opts: { rate: number; getVolume: () => number; signal: AbortSignal; onLine: (i: number) => void; audioEl: HTMLAudioElement; onAudioError: () => void; preview: () => Promise<void> },
+  opts: {
+    rate: number; getVolume: () => number; signal: AbortSignal; audioEl: HTMLAudioElement; onAudioError: () => void; preview: () => Promise<void>
+    /** Resume point after a refresh (audio seconds / script line); the question preview is not repeated. */
+    resumeAt?: { audioPos?: number; scriptLine?: number }
+    onProgress: (p: { audioPos?: number; scriptLine?: number }) => void
+    /** The audio was paused by something outside the test (headphones unplugged, a call): show a Resume button. */
+    onPausedChange: (paused: boolean) => void
+  },
 ) {
   const url = section.audio ? await resolveMediaUrl(section.audio).catch(() => undefined) : undefined
   if (url) {
@@ -32,27 +42,39 @@ async function playPart(
     try {
       el.src = url
       el.volume = opts.getVolume()
+      if (opts.resumeAt?.audioPos) el.currentTime = opts.resumeAt.audioPos
       await new Promise<void>((resolve, reject) => {
         let last = Date.now()
-        el.ontimeupdate = () => { last = Date.now() }
+        let saved = 0
+        el.ontimeupdate = () => {
+          last = Date.now()
+          if (Math.abs(el.currentTime - saved) >= 3) { saved = el.currentTime; opts.onProgress({ audioPos: saved }) }
+        }
         el.onended = () => resolve()
         el.onerror = () => reject(el.error)
-        opts.signal.addEventListener('abort', () => { el.pause(); resolve() })
-        stallTimer = setInterval(() => { if (Date.now() - last > STALL_MS) reject(new Error('stalled')) }, 2000)
-        el.play().catch(reject) // corrupt file, or the browser blocked playback (iOS)
+        // Paused from outside: try to carry on; if the browser refuses, the candidate gets a Resume button.
+        el.onpause = () => { if (!el.ended && !opts.signal.aborted) el.play().then(() => opts.onPausedChange(false), () => opts.onPausedChange(true)) }
+        el.onplay = () => { last = Date.now(); opts.onPausedChange(false) }
+        opts.signal.addEventListener('abort', () => { el.onpause = null; el.pause(); resolve() })
+        // A stall is no progress while playing — a paused recording waits for Resume instead.
+        stallTimer = setInterval(() => { if (!el.paused && Date.now() - last > STALL_MS) reject(new Error('stalled')) }, 2000)
+        el.play().catch(reject) // corrupt file, or the browser blocked playback
       })
       return
     } catch {
+      el.onpause = null
       el.pause()
+      opts.onPausedChange(false)
       if (opts.signal.aborted) return
     } finally {
       clearInterval(stallTimer)
     }
   }
   if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
-  await opts.preview()
+  const from = opts.resumeAt?.scriptLine ?? 0
+  if (!from) await opts.preview()
   if (opts.signal.aborted) return
-  await playScript(parseScript(section.transcript), opts)
+  await playScript(parseScript(section.transcript), { ...opts, from, onLine: i => opts.onProgress({ scriptLine: i }) })
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
@@ -95,16 +117,26 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     setPreviewUntil(undefined)
   }
 
+  const [audioPaused, setAudioPaused] = useState(false)
   const run = async (from: number) => {
+    // The start screen fades out for a moment and stays clickable: a second click must not start a second run.
+    if (abortRef.current) return
     const ctrl = new AbortController()
     abortRef.current = ctrl
+    const el = audioRef.current!
+    if (!el.src) { el.src = SILENT; el.play().then(() => el.pause(), () => {}) } // iOS unlock, inside the click
+    const saved = attempt.progress.listening
+    setPlaying(from)
     for (let i = from; i < sections.length; i++) {
       if (ctrl.signal.aborted) return
-      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i } } }))
+      const resumeAt = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
+      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, ...(resumeAt ? {} : { audioPos: undefined, scriptLine: undefined }) } } }))
       setPlaying(i)
       setView(i)
       await playPart(sections[i], {
-        rate, getVolume: () => volumeRef.current, signal: ctrl.signal, onLine: () => {}, audioEl: audioRef.current!,
+        rate, getVolume: () => volumeRef.current, signal: ctrl.signal, audioEl: el, resumeAt,
+        onProgress: p => patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, ...p } } })),
+        onPausedChange: setAudioPaused,
         preview: () => previewTime(i, ctrl.signal),
         onAudioError: () => toast(
           sections[i].transcript.trim()
@@ -118,7 +150,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     if (ctrl.signal.aborted) return
     setPlaying(null)
     patchAttempt(attempt.id, a => ({
-      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, deadline: a.timed ? Date.now() + CHECK_MS : undefined } },
+      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + CHECK_MS : undefined } },
     }))
     await speak('That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
   }
@@ -127,7 +159,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume }, [volume])
 
   const started = playing !== null || progress.section === -1
-  const interrupted = !started && progress.section > 0
+  const interrupted = !started && (progress.section > 0 || Boolean(progress.audioPos || progress.scriptLine))
   const parts = sections.map(s => partNav(s.groups, attempt.answers, attempt.flags, s.title))
   const unanswered = parts.flatMap(p => p.numbers).filter(n => !n.answered).length
   const section = sections[view]
@@ -151,6 +183,8 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
               <span className="font-semibold">Look at the questions · {fmtClock(Math.max(0, previewUntil - now))}</span>
               {attempt.mode === 'practice' && <button onClick={() => skipPreview.current?.()} className="rounded border px-2 py-0.5 text-xs font-semibold exam-line hover:opacity-70">Skip</button>}
             </>
+          ) : audioPaused ? (
+            <button onClick={() => void audioRef.current?.play()} className="rounded-md bg-[#1d4ed8] px-3 py-1 text-xs font-semibold text-white">The recording paused — Resume</button>
           ) : playing !== null && <><AudioWave /><span className="font-semibold">Playing {sections[playing].title}</span></>}
           {checkUntil && <span className="font-semibold">Checking time · {fmtClock(Math.max(0, checkUntil - now))}</span>}
         </div>
@@ -167,7 +201,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
               <h2 className="text-2xl font-bold">{interrupted ? 'Recording interrupted' : 'Sound check'}</h2>
               <p className="max-w-md opacity-70">
                 {interrupted
-                  ? `The audio stopped when the page was reloaded. It will continue from the start of ${sections[progress.section].title}.`
+                  ? `The audio stopped when the page was reloaded. It will continue from where it stopped in ${sections[progress.section].title}.`
                   : 'Click "Test sound" and adjust the volume slider at the top. When you can hear clearly, start the test — the recording plays once only.'}
               </p>
               {!ttsSupported() && <p className="text-sm text-rose-600">Your browser can't play spoken audio. Use Chrome, Edge or Safari.</p>}

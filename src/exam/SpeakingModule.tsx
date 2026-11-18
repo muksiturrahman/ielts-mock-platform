@@ -93,6 +93,9 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   const [phaseStart, setPhaseStart] = useState(Date.now())
   const [notes, setNotes] = useState(attempt.scratchpad)
   const recRef = useRef<RecorderHandle>(null)
+  const streamRef = useRef(stream)
+  streamRef.current = stream
+  const startedRef = useRef(false)
   const now = useNow(250)
   const step = steps[index]
 
@@ -148,11 +151,20 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     pendingAck.current = ''
     if (ack && !s.lead?.startsWith(ack)) { await speak(ack, { voice: v, rate }); await pause(350) }
     if (!alive.current) return
+    // Refreshed during the Part 2 minute: the topic card is on screen already and the minute keeps counting.
+    const prep = attempt.progress.speaking?.prep
+    if (s.cue && prep?.step === i) {
+      setPhase('prep')
+      setPhaseStart(prep.at)
+      return
+    }
     if (s.lead) { await speak(s.lead.replace('{examiner}', examinerName(v)), { voice: v, rate }); await pause(400) }
     if (!alive.current) return
     if (s.cue) {
+      const at = Date.now()
+      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, speaking: { ...a.progress.speaking, prep: { step: i, at } } } }))
       setPhase('prep')
-      setPhaseStart(Date.now())
+      setPhaseStart(at)
       return
     }
     await speak(s.question, { voice: v, rate })
@@ -160,17 +172,45 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   }
 
   const start = () => {
+    if (startedRef.current) return // the check screen fades out and stays clickable for a moment
+    startedRef.current = true
     const v = examinerVoice()
     setVoice(v)
     void ask(index, v)
   }
 
+  /** Headset unplugged or permission revoked mid-test: back to the mic check; the same question is asked again. */
+  const micLost = () => {
+    stopSpeaking()
+    const rec = recRef.current
+    recRef.current = null
+    void rec?.stop().catch(() => {})
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    setStream(undefined)
+    startedRef.current = false
+    setMicError('Your microphone stopped working. Reconnect it and allow it again to carry on from this question.')
+    setPhase('check')
+  }
+
   const beginAnswer = () => {
-    if (!stream || !alive.current) return
+    const s = streamRef.current
+    if (!s || !alive.current) return
+    try {
+      recRef.current = startRecording(s, { onLevel: setLevel, onTranscript: setTranscript })
+    } catch {
+      return micLost()
+    }
     setPhase('answering')
     setPhaseStart(Date.now())
-    recRef.current = startRecording(stream, { onLevel: setLevel, onTranscript: setTranscript })
   }
+
+  useEffect(() => {
+    if (!stream) return
+    const track = stream.getAudioTracks()[0]
+    const lost = () => { if (alive.current && startedRef.current) micLost() }
+    track?.addEventListener('ended', lost)
+    return () => track?.removeEventListener('ended', lost)
+  }, [stream]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** "Could you repeat the question?" — once per question, before the candidate has started answering. */
   const repeatQuestion = async () => {

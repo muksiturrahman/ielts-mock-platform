@@ -247,6 +247,11 @@ export interface ModuleProgress {
   revealed?: boolean
   /** Speaking ended early because the microphone failed — not marked. */
   skipped?: boolean
+  /** Listening: where the current part's audio (seconds) or script (line) had got to — a refresh resumes there. */
+  audioPos?: number
+  scriptLine?: number
+  /** Speaking: the Part 2 preparation minute already started (step index + start time), so a refresh can't restart it. */
+  prep?: { step: number; at: number }
 }
 
 export interface Attempt {
