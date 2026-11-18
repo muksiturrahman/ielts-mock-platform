@@ -57,9 +57,9 @@ export function TestReportForm({ attempt }: { attempt: Attempt }) {
         </div>
 
         <div className="mt-8 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Test results</div>
-        <div className="mt-2 grid grid-cols-6 overflow-hidden rounded-xl border border-slate-300 text-center">
+        <div className="mt-2 grid grid-cols-2 overflow-hidden sm:grid-cols-6 rounded-xl border border-slate-300 text-center">
           {([['Listening', b.listening], ['Reading', b.reading], ['Writing', b.writing], ['Speaking', b.speaking]] as const).map(([k, v]) => (
-            <div key={k} className="border-r border-slate-300 p-3">
+            <div key={k} className="border-b border-r border-slate-300 p-3 even:border-r-0 sm:border-b-0 sm:even:border-r">
               <div className="text-[10px] font-semibold uppercase text-slate-500">{k}</div>
               <div className="font-display text-3xl font-extrabold text-slate-900">{fmtBand(v)}</div>
             </div>

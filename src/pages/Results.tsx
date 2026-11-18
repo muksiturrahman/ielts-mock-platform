@@ -273,9 +273,9 @@ function Annotated({ text, notes }: { text: string; notes: { quote: string; labe
   spans.forEach((sp, i) => {
     out.push(text.slice(pos, sp.s))
     out.push(
-      <span key={i} className={cx('group relative cursor-help rounded px-0.5 underline decoration-2 underline-offset-4', sp.n.tone)}>
+      <span key={i} tabIndex={0} className={cx('group relative cursor-help rounded outline-none focus-visible:ring-2 focus-visible:ring-brand-400 px-0.5 underline decoration-2 underline-offset-4', sp.n.tone)}>
         {text.slice(sp.s, sp.e)}
-        <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden w-64 rounded-xl bg-slate-900 p-3 text-xs leading-relaxed text-white shadow-xl group-hover:block">
+        <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden w-64 max-w-[75vw] rounded-xl bg-slate-900 p-3 text-xs leading-relaxed text-white shadow-xl group-hover:block group-focus:block">
           <b className="uppercase">{sp.n.label}</b><br />{sp.n.detail}
         </span>
       </span>,

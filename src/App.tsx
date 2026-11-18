@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { Button, ToastProvider, cx, useToast } from './components/ui'
+import { Button, ToastProvider, cx, useDialogFocus, useToast } from './components/ui'
 import { setSettings, useDB } from './lib/store'
 import { applyTheme } from './lib/theme'
 import { PROVIDERS } from './lib/ai'
@@ -138,6 +138,7 @@ function StorageWarning() {
 export default function App() {
   const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const navRef = useDialogFocus<HTMLElement>(mobileOpen, () => setMobileOpen(false))
   const theme = useDB(d => d.settings.theme)
   useEffect(applyTheme, [theme])
 
@@ -170,7 +171,7 @@ export default function App() {
           {mobileOpen && (
             <motion.div className="fixed inset-0 z-40 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="absolute inset-0 bg-slate-900/30" onClick={() => setMobileOpen(false)} />
-              <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }} className="relative h-full w-72 bg-white shadow-2xl">
+              <motion.aside ref={navRef} role="dialog" aria-modal="true" aria-label="Menu" tabIndex={-1} initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }} className="relative h-full w-72 bg-white shadow-2xl outline-none">
                 <button className="absolute right-3 top-4 rounded-xl p-2 hover:bg-slate-100" onClick={() => setMobileOpen(false)} aria-label="Close menu"><X size={18} /></button>
                 <Sidebar onNavigate={() => setMobileOpen(false)} />
               </motion.aside>

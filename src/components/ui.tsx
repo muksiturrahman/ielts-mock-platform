@@ -1,6 +1,6 @@
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react'
 import { X } from 'lucide-react'
-import { createContext, useCallback, useContext, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -97,25 +97,21 @@ export function BandRing({ band, size = 120, label, stroke = 10 }: { band?: numb
 }
 
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; wide?: boolean }) {
-  useEffect(() => {
-    if (!open) return
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
-  }, [open, onClose])
+  const ref = useDialogFocus<HTMLDivElement>(open, onClose)
+  const titleId = useId()
   return (
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
           <motion.div
-            role="dialog" aria-modal="true"
+            ref={ref} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} tabIndex={-1}
             initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            className={cx('relative max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl scroll-thin', wide ? 'max-w-3xl' : 'max-w-lg')}
+            className={cx('relative max-h-[90vh] w-full overflow-y-auto rounded-3xl outline-none bg-white p-6 shadow-2xl scroll-thin', wide ? 'max-w-3xl' : 'max-w-lg')}
           >
             <div className="mb-4 flex items-start justify-between gap-4">
-              <div className="font-display text-xl font-bold text-slate-900">{title}</div>
+              <div id={titleId} className="font-display text-xl font-bold text-slate-900">{title}</div>
               <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" aria-label="Close">
                 <X size={18} />
               </button>
@@ -126,6 +122,32 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
       )}
     </AnimatePresence>
   )
+}
+
+/** Dialog focus: moves focus in when `active`, keeps Tab inside, Escape calls onEscape, and returns focus on close. */
+export function useDialogFocus<T extends HTMLElement>(active: boolean, onEscape?: () => void) {
+  const ref = useRef<T>(null)
+  const esc = useRef(onEscape)
+  esc.current = onEscape
+  useEffect(() => {
+    const el = ref.current
+    if (!active || !el) return
+    const prev = document.activeElement as HTMLElement | null
+    const items = () => [...el.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x => !x.hasAttribute('disabled'))
+    ;(el.querySelector<HTMLElement>('[autofocus]') ?? el).focus()
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && esc.current) { e.preventDefault(); esc.current(); return }
+      if (e.key !== 'Tab') return
+      const f = items()
+      if (!f.length) { e.preventDefault(); return }
+      const at = document.activeElement
+      if (e.shiftKey && (at === f[0] || at === el || !el.contains(at))) { e.preventDefault(); f[f.length - 1].focus() }
+      else if (!e.shiftKey && (at === f[f.length - 1] || !el.contains(at))) { e.preventDefault(); f[0].focus() }
+    }
+    document.addEventListener('keydown', key)
+    return () => { document.removeEventListener('keydown', key); prev?.focus?.() }
+  }, [active])
+  return ref
 }
 
 // ---------- Toasts ----------

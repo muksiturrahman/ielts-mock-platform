@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { MODULE_LABEL, moduleMinutes, startModule, submitModule } from '../lib/attempts'
 import { patchAttempt, useDB } from '../lib/store'
+import { useDialogFocus } from '../components/ui'
 import type { AnswerValue, Attempt, Highlight, ModuleKey, Test } from '../lib/types'
 import { stopSpeaking } from '../lib/speech'
 import ListeningModule from './ListeningModule'
@@ -181,9 +182,10 @@ export default function ExamPage() {
 }
 
 function Overlay({ children }: { children: React.ReactNode }) {
+  const ref = useDialogFocus<HTMLDivElement>(true)
   return (
     <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-md rounded-xl bg-white p-6 text-center text-slate-900 shadow-2xl">
+      <motion.div ref={ref} role="dialog" aria-modal="true" tabIndex={-1} initial={{ scale: 0.92, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-md rounded-xl bg-white p-6 text-center outline-none text-slate-900 shadow-2xl">
         {children}
       </motion.div>
     </motion.div>

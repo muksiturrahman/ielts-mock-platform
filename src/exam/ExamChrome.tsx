@@ -32,6 +32,9 @@ export const fmtClock = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+// iOS ignores media volume set from a page, so a slider there would do nothing.
+const volumeSettable = (() => { try { const a = new Audio(); a.volume = 0.5; return a.volume === 0.5 } catch { return false } })()
+
 export function TopBar({ title, remaining, right, volume, onVolume }: { title: string; remaining?: number; right?: ReactNode; volume?: number; onVolume?: (v: number) => void }) {
   const profile = useDB(d => d.profile)
   const [hidden, setHidden] = useState(false)
@@ -58,13 +61,13 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
         )}
       </div>
       <div className="flex items-center gap-3">
-        {onVolume && (
-          <label className="hidden items-center gap-2 text-xs md:flex" title="Volume">
-            <Volume2 size={16} />
-            <input type="range" min={0} max={1} step={0.05} value={volume} onChange={e => onVolume(Number(e.target.value))} className="w-24 accent-blue-600" />
+        {onVolume && volumeSettable && (
+          <label className="flex items-center gap-2 text-xs" title="Volume">
+            <Volume2 size={16} className="hidden sm:block" />
+            <input type="range" min={0} max={1} step={0.05} value={volume} onChange={e => onVolume(Number(e.target.value))} className="w-16 accent-blue-600 sm:w-24" aria-label="Volume" />
           </label>
         )}
-        <Wifi size={16} className="opacity-50" aria-label="Connected" />
+        <Wifi size={16} className="hidden opacity-50 sm:block" aria-label="Connected" />
         <div className="relative">
           <button onClick={() => setOpen(o => !o)} className="rounded-md p-1.5 transition hover:opacity-70" aria-label="Display settings"><Settings2 size={18} /></button>
           <AnimatePresence>
@@ -171,7 +174,17 @@ export function SplitPane({ left, right }: { left: ReactNode; right: ReactNode }
   return (
     <div ref={ref} className="flex min-h-0 flex-1 flex-col md:flex-row">
       <div className="min-h-0 overflow-y-auto p-6 scroll-thin md:p-8" style={{ flexBasis: `${pct}%` }}>{left}</div>
-      <div onPointerDown={drag} className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center border-x exam-line exam-muted md:flex" role="separator" aria-label="Resize panels">
+      <div
+        onPointerDown={drag} tabIndex={0} role="separator" aria-label="Resize panels" aria-orientation="vertical"
+        aria-valuemin={25} aria-valuemax={75} aria-valuenow={Math.round(pct)}
+        onKeyDown={e => {
+          const step = { ArrowLeft: -5, ArrowRight: 5, Home: -100, End: 100 }[e.key]
+          if (step === undefined) return
+          e.preventDefault()
+          setPct(p => Math.min(75, Math.max(25, p + step)))
+        }}
+        className="group hidden w-2 shrink-0 cursor-col-resize items-center justify-center border-x outline-none exam-line exam-muted focus-visible:ring-2 focus-visible:ring-blue-500 md:flex"
+      >
         <div className="h-10 w-0.5 rounded bg-current opacity-30 transition group-hover:opacity-70" />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-6 scroll-thin md:p-8">{right}</div>

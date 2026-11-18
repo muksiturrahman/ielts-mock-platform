@@ -88,12 +88,29 @@ export function Passage({ title, text, highlights, onChange }: Props) {
     const range = s.getRangeAt(0)
     const pEl = (range.startContainer.parentElement as HTMLElement | null)?.closest('[data-para]') as HTMLElement | null
     const pEnd = (range.endContainer.parentElement as HTMLElement | null)?.closest('[data-para]') as HTMLElement | null
-    if (!pEl || pEl !== pEnd) return undefined // one paragraph at a time, like the real test
+    if (!pEl || pEl !== pEnd || !ref.current?.contains(pEl)) return undefined // one paragraph at a time, like the real test
     const textEl = pEl.querySelector('[data-text]')!
     const start = offsetIn(textEl, range.startContainer, range.startOffset)
     const end = offsetIn(textEl, range.endContainer, range.endOffset)
     return end > start ? { paragraph: Number(pEl.dataset.para), start, end } : undefined
   }
+
+  // Touch screens have no right-click: open the menu under a finished text selection instead.
+  useEffect(() => {
+    if (!matchMedia('(pointer: coarse)').matches) return
+    let t = 0
+    const onSel = () => {
+      clearTimeout(t)
+      t = window.setTimeout(() => {
+        const sel = currentSelection()
+        if (!sel) return
+        const r = window.getSelection()!.getRangeAt(0).getBoundingClientRect()
+        setMenu({ x: r.left, y: r.bottom + 12, sel })
+      }, 450)
+    }
+    document.addEventListener('selectionchange', onSel)
+    return () => { clearTimeout(t); document.removeEventListener('selectionchange', onSel) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- currentSelection only reads the DOM
 
   const addHighlight = (sel: { paragraph: number; start: number; end: number }, note?: string) => {
     const others = highlights.filter(h => h.paragraph !== sel.paragraph || h.end <= sel.start || h.start >= sel.end)
@@ -133,7 +150,7 @@ export function Passage({ title, text, highlights, onChange }: Props) {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
-            style={{ position: 'fixed', left: menu.x, top: menu.y }}
+            style={{ position: 'fixed', left: Math.max(8, Math.min(menu.x, innerWidth - 200)), top: Math.max(8, Math.min(menu.y, innerHeight - 180)) }}
             className="z-50 min-w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm text-slate-800 shadow-xl"
             onClick={e => e.stopPropagation()}
           >
