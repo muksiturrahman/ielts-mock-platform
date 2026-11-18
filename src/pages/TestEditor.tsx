@@ -6,7 +6,7 @@ import { Badge, Button, Card, Modal, cx, useToast } from '../components/ui'
 import { TaskChart } from '../components/TaskChart'
 import { CSV_HEADER, questionsFromCsv } from '../lib/csv'
 import { putMedia, resolveMediaUrl } from '../lib/media'
-import { testIssues } from '../lib/validate'
+import { isTestShape, testIssues } from '../lib/validate'
 import { saveTest, uid, useDB } from '../lib/store'
 import type { ChartData, ListeningSection, Option, QuestionGroup, QuestionType, ReadingSection, Test, WritingTask } from '../lib/types'
 import { Passage } from '../exam/Passage'
@@ -422,6 +422,8 @@ function JsonEditor({ test, onApply }: { test: Test; onApply: (t: Test) => void 
           try {
             const t = JSON.parse(text) as Test
             if (typeof t.title !== 'string' || !['academic', 'general'].includes(t.variant)) throw new Error('title and variant ("academic" | "general") are required')
+            // Same structure check as imports: a broken question or chart would crash the editor or the exam.
+            if (!isTestShape({ ...t, id: test.id })) throw new Error('Some questions, sections or chart data are malformed (every question needs an id, a number and an answer list; charts need one number per category)')
             setErr('')
             onApply(t)
           } catch (e) { setErr((e as Error).message) }

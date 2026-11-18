@@ -3,12 +3,13 @@ import { BarChart3, Copy, Download, Eye, EyeOff, FileJson, Pencil, Plus, RotateC
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Badge, Button, Card, Empty, PageHeader, cx, fmtBand, fmtDate, useToast } from '../components/ui'
+import { Badge, Button, Card, Empty, PageHeader, cx, fmtBand, fmtDate, useToast, confirmDiscard, useUnsaved } from '../components/ui'
 import { restoreSeed, SEED_TESTS } from '../data/seed'
 import { attemptOverall, availableModules, MODULE_LABEL } from '../lib/attempts'
 import { DEFAULT_SPEAKING_PROMPT, DEFAULT_WRITING_PROMPT } from '../lib/prompts'
 import { deleteTest, saveTest, setSettings, uid, useDB } from '../lib/store'
 import { isTestShape, testIssues } from '../lib/validate'
+import { embedTestMedia, storeEmbeddedMedia } from '../lib/media'
 import type { Test } from '../lib/types'
 
 type Tab = 'tests' | 'analytics' | 'prompts'
@@ -20,7 +21,7 @@ export default function Admin() {
       <PageHeader title="Admin" subtitle="Build and publish mock tests, review platform analytics and tune the AI rubric." />
       <div role="tablist" className="mb-6 flex w-fit max-w-full gap-1 overflow-x-auto rounded-2xl bg-white p-1 shadow-sm scroll-thin">
         {([['tests', 'Test library', FileJson], ['analytics', 'Analytics', BarChart3], ['prompts', 'Rubric prompts', SlidersHorizontal]] as const).map(([k, l, Icon]) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cx('relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition', tab === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => k !== tab && confirmDiscard() && setTab(k)} className={cx('relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition', tab === k ? 'text-white' : 'text-slate-500 hover:text-slate-800')}>
             {tab === k && <motion.span layoutId="admin-tab" className="absolute inset-0 rounded-xl bg-slate-900" transition={{ type: 'spring', stiffness: 400, damping: 32 }} />}
             <Icon size={15} className="relative" /><span className="relative">{l}</span>
           </button>
@@ -60,7 +61,7 @@ function Library() {
       const data = JSON.parse(await f.text())
       const list = (Array.isArray(data) ? data : [data]).map(t => (t && typeof t === 'object' && typeof t.id !== 'string' ? { ...t, id: 'import' } : t)).filter(isTestShape)
       if (!list.length) throw new Error('No valid tests in this file')
-      list.forEach(t => saveTest({ ...t, id: uid('test-'), status: 'draft', deleted: undefined, createdAt: Date.now() }))
+      for (const t of list) saveTest({ ...(await storeEmbeddedMedia(t)), id: uid('test-'), status: 'draft', deleted: undefined, createdAt: Date.now() })
       toast(`Imported ${list.length} test${list.length > 1 ? 's' : ''} as draft`, 'success')
     } catch (e) {
       toast(`Import failed: ${(e as Error).message}`, 'error')
@@ -72,7 +73,7 @@ function Library() {
       <div className="mb-5 flex flex-wrap gap-2">
         <Button onClick={() => { const t = blankTest(); saveTest(t); navigate(`/admin/tests/${t.id}`) }}><Plus size={16} /> New test</Button>
         <Button variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={16} /> Import JSON</Button>
-        <Button variant="secondary" onClick={() => download('bandready-tests.json', JSON.stringify(tests, null, 2))}><Download size={16} /> Export all</Button>
+        <Button variant="secondary" onClick={async () => download('bandready-tests.json', JSON.stringify(await Promise.all(tests.map(embedTestMedia)), null, 2))}><Download size={16} /> Export all</Button>
         {missingSeeds.map(s => <Button key={s.id} variant="ghost" onClick={() => { restoreSeed(s.id); toast(`Restored ${s.title}`, 'success') }}><RotateCcw size={15} /> Restore “{s.title}”</Button>)}
         <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void importFile(f); e.target.value = '' }} />
       </div>
@@ -107,7 +108,7 @@ function Library() {
                         {t.status === 'published' ? <EyeOff size={15} /> : <Eye size={15} />}
                       </IconBtn>
                       <IconBtn title="Duplicate" onClick={() => { saveTest({ ...structuredClone(t), id: uid('test-'), title: `${t.title} (copy)`, status: 'draft', createdAt: Date.now() }); toast('Duplicated') }}><Copy size={15} /></IconBtn>
-                      <IconBtn title="Export JSON" onClick={() => download(`${t.title.replace(/\W+/g, '-').toLowerCase()}.json`, JSON.stringify(t, null, 2))}><Download size={15} /></IconBtn>
+                      <IconBtn title="Export JSON (uploaded audio and images included)" onClick={async () => download(`${t.title.replace(/\W+/g, '-').toLowerCase()}.json`, JSON.stringify(await embedTestMedia(t), null, 2))}><Download size={15} /></IconBtn>
                       <IconBtn title="Delete" danger onClick={() => { if (confirm(`Delete “${t.title}”? Past attempts keep their results.`)) { deleteTest(t.id); toast('Test deleted') } }}><Trash2 size={15} /></IconBtn>
                     </div>
                   </td>
@@ -200,6 +201,7 @@ function Prompts() {
   const toast = useToast()
   const [w, setW] = useState(settings.writingPrompt)
   const [s, setS] = useState(settings.speakingPrompt)
+  useUnsaved(w !== settings.writingPrompt || s !== settings.speakingPrompt)
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {([['Writing examiner prompt', w, setW, DEFAULT_WRITING_PROMPT], ['Speaking examiner prompt', s, setS, DEFAULT_SPEAKING_PROMPT]] as const).map(([title, val, set, def]) => (

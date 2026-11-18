@@ -4,8 +4,8 @@ import { Button, Card, PageHeader, useToast } from '../components/ui'
 import { ensureSeeded } from '../data/seed'
 import { AISection } from './AISettings'
 import { speak } from '../lib/speech'
-import { clearAllMedia, exportAllMedia, importAllMedia } from '../lib/media'
-import { exportBackup, importBackup, resetAll, setProfile, setSettings, useDB } from '../lib/store'
+import { clearAllMedia, exportAllMedia, importAllMedia, referencedMedia } from '../lib/media'
+import { exportBackup, getDB, importBackup, resetAll, setProfile, setSettings, useDB } from '../lib/store'
 
 
 export function Section({ icon, title, desc, children, delay }: { icon: ReactNode; title: string; desc: string; children: ReactNode; delay: number }) {
@@ -72,7 +72,10 @@ export default function Settings() {
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={async () => {
             const a = document.createElement('a')
-            a.href = URL.createObjectURL(new Blob([exportBackup(await exportAllMedia().catch(() => ({})))], { type: 'application/json' }))
+            // Only media something still uses — deleted recordings and replaced uploads stay out of the file.
+            let media: Record<string, string> = {}
+            try { media = await exportAllMedia(referencedMedia(getDB())) } catch { toast('Recordings and uploaded audio could not be read, so this backup has none', 'error') }
+            a.href = URL.createObjectURL(new Blob([exportBackup(media)], { type: 'application/json' }))
             a.download = `bandready-backup-${new Date().toISOString().slice(0, 10)}.json`
             a.click()
             setTimeout(() => URL.revokeObjectURL(a.href), 1000)
@@ -89,6 +92,7 @@ export default function Settings() {
             if (!confirm('Restoring replaces all tests, results and settings in this browser with the backup. Continue?')) { e.target.value = ''; return }
             try {
               const { media, dropped } = importBackup(await f.text())
+              await clearAllMedia().catch(() => {}) // the restored data replaces everything, recordings included
               const failed = await importAllMedia(media)
               const skipped = [dropped && `${dropped} unreadable test${dropped === 1 ? '' : 's'}/attempt${dropped === 1 ? '' : 's'}`, failed && `${failed} recording${failed === 1 ? '' : 's'}`].filter(Boolean)
               toast(skipped.length ? `Backup restored — skipped ${skipped.join(' and ')}` : 'Backup restored', skipped.length ? 'info' : 'success')

@@ -150,6 +150,19 @@ export function useDialogFocus<T extends HTMLElement>(active: boolean, onEscape?
   return ref
 }
 
+// ---------- Unsaved changes ----------
+let unsaved = false
+/** Marks the page as having unsaved edits: closing the tab warns, and confirmDiscard() asks before switching away. */
+export function useUnsaved(dirty: boolean) {
+  useEffect(() => {
+    unsaved = dirty
+    const warn = (e: BeforeUnloadEvent) => { if (dirty) e.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => { unsaved = false; window.removeEventListener('beforeunload', warn) }
+  }, [dirty])
+}
+export const confirmDiscard = () => !unsaved || confirm('You have unsaved changes. Discard them?')
+
 // ---------- Toasts ----------
 type Toast = { id: number; text: string; tone: 'info' | 'success' | 'error' }
 const ToastCtx = createContext<(text: string, tone?: Toast['tone']) => void>(() => {})

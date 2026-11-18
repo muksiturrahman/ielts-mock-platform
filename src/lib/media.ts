@@ -59,8 +59,8 @@ const toDataUrl = (b: Blob) => new Promise<string>((resolve, reject) => {
 })
 
 /** Every stored blob (recordings, uploaded audio/images) as data URLs, for the backup file. */
-export async function exportAllMedia(): Promise<Record<string, string>> {
-  const ids = (await tx('readonly', s => s.getAllKeys())) as string[]
+export async function exportAllMedia(onlyIds?: Set<string>): Promise<Record<string, string>> {
+  const ids = ((await tx('readonly', s => s.getAllKeys())) as string[]).filter(id => !onlyIds || onlyIds.has(id))
   const out: Record<string, string> = {}
   for (const id of ids) {
     const blob = await getMedia(id)
@@ -83,4 +83,30 @@ export async function clearAllMedia() {
   urlCache.forEach(url => URL.revokeObjectURL(url))
   urlCache.clear()
   await tx('readwrite', s => s.clear())
+}
+
+/** Media ids ("media:<id>") mentioned anywhere in some data — what a backup or export actually needs. */
+export function referencedMedia(data: unknown): Set<string> {
+  return new Set([...JSON.stringify(data).matchAll(/"media:([^"]+)"/g)].map(m => m[1]))
+}
+
+/** A copy of the test with its uploaded audio/images inlined as data URLs, so the JSON works in another browser. */
+export async function embedTestMedia<T>(test: T): Promise<T> {
+  let json = JSON.stringify(test)
+  for (const id of referencedMedia(test)) {
+    const blob = await getMedia(id).catch(() => undefined)
+    if (blob) json = json.split(`"media:${id}"`).join(JSON.stringify(await toDataUrl(blob)))
+  }
+  return JSON.parse(json) as T
+}
+
+/** The reverse of embedTestMedia: inline data URLs go to IndexedDB (localStorage is too small for audio). */
+export async function storeEmbeddedMedia<T>(test: T): Promise<T> {
+  const urls = new Set([...JSON.stringify(test).matchAll(/"(data:(?:audio|image|video)\/[^"]+)"/g)].map(m => m[1]))
+  let json = JSON.stringify(test)
+  for (const url of urls) {
+    const ref = await putMedia(await (await fetch(url)).blob())
+    json = json.split(JSON.stringify(url)).join(JSON.stringify(ref))
+  }
+  return JSON.parse(json) as T
 }

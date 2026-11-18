@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { ClipboardCheck, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Button, Card, Empty, PageHeader, bandColor, cx, fmtBand, fmtDate, useToast } from '../components/ui'
+import { Badge, Button, Card, Empty, PageHeader, bandColor, confirmDiscard, cx, fmtBand, fmtDate, useToast, useUnsaved } from '../components/ui'
 import { moduleBands, writingTaskBand } from '../lib/attempts'
 import { countWords } from '../lib/scoring'
 import { patchAttempt, useDB } from '../lib/store'
@@ -26,7 +26,7 @@ export default function Examiner() {
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
           <div className="space-y-2">
             {queue.map(a => (
-              <button key={a.id} onClick={() => setSelected(a.id)}
+              <button key={a.id} onClick={() => a.id !== current?.id && confirmDiscard() && setSelected(a.id)}
                 className={cx('w-full rounded-2xl border p-4 text-left transition', current?.id === a.id ? 'border-brand-300 bg-brand-50 shadow' : 'border-slate-200 bg-white hover:border-slate-300')}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-semibold text-slate-800">{a.testTitle}</span>
@@ -51,6 +51,8 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
   const w = attempt.results.writing
   const s = attempt.results.speaking
   const bands = moduleBands({ ...attempt, review })
+  const marks = (r?: ExaminerReview) => JSON.stringify([r?.writing ?? {}, r?.speaking ?? {}, r?.feedback ?? ''])
+  useUnsaved(marks(review) !== marks(attempt.review))
 
   const setW = (task: 'task1' | 'task2', k: string, v: string) =>
     setReview(r => ({ ...r, writing: { ...r.writing, [task]: { ...r.writing?.[task], [k]: v === '' ? undefined : Number(v) } } }))
