@@ -16,9 +16,17 @@ const PREVIEW_SEC = 30
 
 /** No progress for this long while "playing" = stalled network/decoder: give up on the file. */
 const STALL_MS = 20_000
-// A tiny silent WAV. Playing it inside the click "unlocks" the audio element on iOS, which otherwise blocks
-// play() once the click handler has awaited anything (the IndexedDB lookup).
-const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA='
+// 0.1 s of silence. Playing it inside the click "unlocks" the audio element on iOS, which otherwise blocks
+// play() once the click handler has awaited anything (the IndexedDB lookup). Real samples: an empty WAV may not decode.
+let silentUrl = ''
+function silentWav() {
+  if (silentUrl) return silentUrl
+  const n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf)
+  const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true)
+  return (silentUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })))
+}
 
 /**
  * Plays one listening part once: uploaded audio if it plays, otherwise the script via text-to-speech.
@@ -71,10 +79,10 @@ async function playPart(
     }
   }
   if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
-  const from = opts.resumeAt?.scriptLine ?? 0
-  if (!from) await opts.preview()
+  const from = opts.resumeAt?.scriptLine
+  if (from === undefined) await opts.preview()
   if (opts.signal.aborted) return
-  await playScript(parseScript(section.transcript), { ...opts, from, onLine: i => opts.onProgress({ scriptLine: i }) })
+  await playScript(parseScript(section.transcript), { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
@@ -124,7 +132,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     const ctrl = new AbortController()
     abortRef.current = ctrl
     const el = audioRef.current!
-    if (!el.src) { el.src = SILENT; el.play().then(() => el.pause(), () => {}) } // iOS unlock, inside the click
+    if (!el.src) { el.src = silentWav(); el.play().then(() => el.pause(), () => {}) } // iOS unlock, inside the click
     const saved = attempt.progress.listening
     setPlaying(from)
     for (let i = from; i < sections.length; i++) {
@@ -148,6 +156,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
       if (i < sections.length - 1 && !ctrl.signal.aborted) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return
+    abortRef.current = null // finished: practice Replay may start a new run
     setPlaying(null)
     patchAttempt(attempt.id, a => ({
       progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + CHECK_MS : undefined } },
@@ -157,6 +166,14 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
 
   useEffect(() => () => { abortRef.current?.abort(); stopSpeaking() }, [])
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume }, [volume])
+  // While the recording is paused, the candidate's next click or key press (they'll be answering) resumes it.
+  useEffect(() => {
+    if (!audioPaused) return
+    const resume = () => void audioRef.current?.play().catch(() => {})
+    document.addEventListener('pointerdown', resume)
+    document.addEventListener('keydown', resume)
+    return () => { document.removeEventListener('pointerdown', resume); document.removeEventListener('keydown', resume) }
+  }, [audioPaused])
 
   const started = playing !== null || progress.section === -1
   const interrupted = !started && (progress.section > 0 || Boolean(progress.audioPos || progress.scriptLine))

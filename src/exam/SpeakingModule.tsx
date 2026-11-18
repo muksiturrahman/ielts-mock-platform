@@ -96,6 +96,9 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   const streamRef = useRef(stream)
   streamRef.current = stream
   const startedRef = useRef(false)
+  // Bumped when the mic is lost: async steps from before it (an ask() chain, a save) must not carry on.
+  const genRef = useRef(0)
+  const live = (gen: number) => alive.current && gen === genRef.current
   const now = useNow(250)
   const step = steps[index]
 
@@ -139,7 +142,8 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   }
 
   const ask = async (i: number, v = voice) => {
-    if (!alive.current) return
+    const gen = genRef.current
+    if (!live(gen)) return
     const s = steps[i]
     if (!s) return finish()
     setIndex(i)
@@ -150,7 +154,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     const ack = pendingAck.current || (s.lead ? '' : s.ack ?? '')
     pendingAck.current = ''
     if (ack && !s.lead?.startsWith(ack)) { await speak(ack, { voice: v, rate }); await pause(350) }
-    if (!alive.current) return
+    if (!live(gen)) return
     // Refreshed during the Part 2 minute: the topic card is on screen already and the minute keeps counting.
     const prep = attempt.progress.speaking?.prep
     if (s.cue && prep?.step === i) {
@@ -159,7 +163,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
       return
     }
     if (s.lead) { await speak(s.lead.replace('{examiner}', examinerName(v)), { voice: v, rate }); await pause(400) }
-    if (!alive.current) return
+    if (!live(gen)) return
     if (s.cue) {
       const at = Date.now()
       patchAttempt(attempt.id, a => ({ progress: { ...a.progress, speaking: { ...a.progress.speaking, prep: { step: i, at } } } }))
@@ -168,7 +172,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
       return
     }
     await speak(s.question, { voice: v, rate })
-    beginAnswer() // checks alive itself
+    if (live(gen)) beginAnswer()
   }
 
   const start = () => {
@@ -181,11 +185,13 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
 
   /** Headset unplugged or permission revoked mid-test: back to the mic check; the same question is asked again. */
   const micLost = () => {
+    genRef.current++
     stopSpeaking()
     const rec = recRef.current
     recRef.current = null
     void rec?.stop().catch(() => {})
     streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = undefined // before the re-render, so nothing records on the dead track
     setStream(undefined)
     startedRef.current = false
     setMicError('Your microphone stopped working. Reconnect it and allow it again to carry on from this question.')
@@ -207,7 +213,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   useEffect(() => {
     if (!stream) return
     const track = stream.getAudioTracks()[0]
-    const lost = () => { if (alive.current && startedRef.current) micLost() }
+    const lost = () => { if (alive.current && startedRef.current) micLost() } // not after finish(): startedRef is cleared there
     track?.addEventListener('ended', lost)
     return () => track?.removeEventListener('ended', lost)
   }, [stream]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -227,6 +233,7 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   const endAnswer = async (interrupted = false) => {
     const rec = recRef.current
     if (!rec) return
+    const gen = genRef.current
     recRef.current = null
     setPhase('saving')
     const r = await rec.stop()
@@ -239,11 +246,13 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
     patchAttempt(attempt.id, a => ({ speaking: [...a.speaking, answer], scratchpad: notes }))
     // Examiners stop a long answer politely; Part 2 always ends with "Thank you."
     if (interrupted || step.cue) pendingAck.current = 'Thank you.'
+    if (gen !== genRef.current) return setIndex(index + 1) // mic lost while saving: resume at the next question
     void ask(index + 1)
   }
 
   const finish = () => {
     if (!alive.current) return
+    startedRef.current = false // a mic unplugged after the end must not reopen the mic check
     setPhase('done')
     speak('Thank you. That is the end of the speaking test.', { voice, rate })
   }
@@ -253,7 +262,8 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton }: 
   useEffect(() => {
     if (phase === 'prep' && elapsed >= PREP_SEC) {
       setPhase('asking')
-      void speak('All right? Remember you have one to two minutes for this, so don\'t worry if I stop you. I\'ll tell you when the time is up. Can you start speaking now, please?', { voice, rate }).then(beginAnswer)
+      const gen = genRef.current
+      void speak('All right? Remember you have one to two minutes for this, so don\'t worry if I stop you. I\'ll tell you when the time is up. Can you start speaking now, please?', { voice, rate }).then(() => live(gen) && beginAnswer())
     }
     if (phase !== 'answering' || !recRef.current) return
     if (elapsed >= step.limitSec) return void endAnswer(true)
