@@ -250,6 +250,8 @@ export interface ModuleProgress {
   /** Listening: where the current part's audio (seconds) or script (line) had got to — a refresh resumes there. */
   audioPos?: number
   scriptLine?: number
+  /** Listening: when the candidate left mid-recording (full mock skips the time away on return). */
+  leftAt?: number
   /** Speaking: the Part 2 preparation minute already started (step index + start time), so a refresh can't restart it. */
   prep?: { step: number; at: number }
 }

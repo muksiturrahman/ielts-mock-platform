@@ -147,12 +147,25 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     abortRef.current = ctrl
     const el = audioRef.current!
     if (!el.src) { el.src = silentWav(); el.play().then(() => el.pause(), () => {}) } // iOS unlock, inside the click
+    if (ttsSupported()) speechSynthesis.speak(new SpeechSynthesisUtterance('')) // and speech, for announcements / the script fallback
     const saved = attempt.progress.listening
     setPlaying(from)
     for (let i = from; i < sections.length; i++) {
       if (ctrl.signal.aborted) return
-      const resumeAt = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
-      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, ...(resumeAt ? {} : { audioPos: undefined, scriptLine: undefined }) } } }))
+      let resumeAt = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
+      // Full mock: the real recording never stops. Time spent away is skipped, as if it had kept playing.
+      // shortcut: the skip stops at the end of the current part; a longer absence just ends that part.
+      if (resumeAt && attempt.mode === 'full' && saved.leftAt) {
+        let away = (Date.now() - saved.leftAt) / 1000
+        if (resumeAt.audioPos !== undefined) resumeAt = { ...resumeAt, audioPos: resumeAt.audioPos + away }
+        else {
+          const lines = parseScript(sections[i].transcript)
+          let line = resumeAt.scriptLine ?? 0
+          while (line < lines.length && away > 0) { away -= lines[line].text.length / (14 * rate) + 0.5; line++ } // ~14 chars/s spoken
+          resumeAt = { ...resumeAt, scriptLine: line }
+        }
+      }
+      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, leftAt: undefined, ...(resumeAt ? {} : { audioPos: undefined, scriptLine: undefined }) } } }))
       setPlaying(i)
       setView(i)
       await playPart(sections[i], {
@@ -178,7 +191,12 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     await speak('That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
   }
 
-  useEffect(() => () => { abortRef.current?.abort(); stopSpeaking() }, [])
+  // Remember when the candidate left mid-recording (Exit, refresh, closing the tab) — a full mock skips that time on return.
+  useEffect(() => {
+    const left = () => { if (abortRef.current) patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, leftAt: Date.now() } } })) }
+    window.addEventListener('pagehide', left)
+    return () => { window.removeEventListener('pagehide', left); left(); abortRef.current?.abort(); stopSpeaking() }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume }, [volume])
   // While the recording is paused, the candidate's next click or key press (they'll be answering) resumes it.
   useEffect(() => {
@@ -237,7 +255,9 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
               <h2 className="text-2xl font-bold">{interrupted ? 'Recording interrupted' : 'Sound check'}</h2>
               <p className="max-w-md opacity-70">
                 {interrupted
-                  ? `The audio stopped when the page was reloaded. It will continue from where it stopped in ${sections[progress.section].title}.`
+                  ? attempt.mode === 'full'
+                    ? `You left during ${sections[progress.section].title}. As in the real test the recording doesn't wait — it continues from where it would be now.`
+                    : `The audio stopped when you left or reloaded the page. It will continue from where it stopped in ${sections[progress.section].title}.`
                   : 'Click "Test sound" and adjust the volume slider at the top. When you can hear clearly, start the test — the recording plays once only.'}
               </p>
               {!ttsSupported() && <p className="text-sm text-rose-600">Your browser can't play spoken audio. Use Chrome, Edge or Safari.</p>}

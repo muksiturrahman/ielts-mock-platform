@@ -266,9 +266,10 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton, pa
   useEffect(() => {
     if (paused) { pausedAt.current = Date.now(); return }
     if (pausedAt.current === undefined) return
-    const away = Date.now() - pausedAt.current
+    // Only the part of the dialog time after the answer/prep began (a question can finish under the dialog).
+    const away = Date.now() - Math.max(pausedAt.current, phaseStart)
     pausedAt.current = undefined
-    if (phase !== 'answering' && phase !== 'prep') return
+    if (away <= 0 || (phase !== 'answering' && phase !== 'prep')) return
     setPhaseStart(s => s + away)
     recRef.current?.resetSilence()
     if (phase === 'prep') patchAttempt(attempt.id, a => {

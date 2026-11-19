@@ -67,7 +67,7 @@ export default function ExamPage() {
   const module = attempt?.modules[attempt.moduleIndex]
   const started = Boolean(module && attempt?.progress[module]?.startedAt)
 
-  // Anti-cheat: count tab switches / window blur during a running module.
+  // Anti-cheat: count tab switches during a running module (not window blur — mic prompts and the address bar blur too).
   useEffect(() => {
     if (!started || !attempt) return
     // Counted when the candidate comes back: unloading (refresh, closing the tab) also fires 'hidden' and never returns.
