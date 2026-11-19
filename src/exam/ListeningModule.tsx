@@ -52,7 +52,9 @@ async function playPart(
 ): Promise<number> {
   const url = section.audio ? await resolveMediaUrl(section.audio).catch(() => undefined) : undefined
   let heardShare = 0
-  if (url) {
+  // Resuming a part whose script was being read (its audio had failed): stay on the script, even if the file loads now.
+  const onScript = opts.resumeAt?.scriptLine !== undefined
+  if (url && !onScript) {
     const el = opts.audioEl
     let stallTimer: ReturnType<typeof setInterval> | undefined
     let onVisible: (() => void) | undefined
@@ -62,8 +64,12 @@ async function playPart(
       if (opts.resumeAt?.audioPos) {
         await new Promise<void>(r => {
           if (el.readyState >= 1) return r()
-          const t = setTimeout(r, STALL_MS) // a URL that never answers falls through to the stall/error handling
-          const done = () => { clearTimeout(t); r() }
+          const t = setTimeout(() => done(), STALL_MS) // a URL that never answers falls through to the stall/error handling
+          const done = () => {
+            clearTimeout(t)
+            el.removeEventListener('loadedmetadata', done); el.removeEventListener('error', done); opts.signal.removeEventListener('abort', done)
+            r()
+          }
           el.addEventListener('loadedmetadata', done, { once: true })
           el.addEventListener('error', done, { once: true })
           opts.signal.addEventListener('abort', done, { once: true })
@@ -111,17 +117,18 @@ async function playPart(
       if (onVisible) document.removeEventListener('visibilitychange', onVisible)
     }
   }
-  if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
+  if (section.audio && !onScript) opts.onAudioError() // file failed, stalled, or is missing from this browser
   const lines = parseScript(section.transcript)
   if (section.audio) opts.onProgress({ audioPos: undefined }) // from here on the script is the position to resume
+  // the file never loaded but there was a time position (a carried absence): estimate the line; time past the end carries on
+  const estimate = opts.resumeAt?.scriptLine === undefined && !heardShare && opts.resumeAt?.audioPos ? lineAfter(lines, 0, opts.resumeAt.audioPos, opts.rate) : undefined
   const from = opts.resumeAt?.scriptLine
     ?? (heardShare ? Math.floor(lines.length * heardShare) : undefined)
-    // the file never loaded, but there was a time position (a carried absence): estimate the line from it
-    ?? (opts.resumeAt?.audioPos ? lineAfter(lines, 0, opts.resumeAt.audioPos, opts.rate).line : undefined)
+    ?? estimate?.line
   if (from === undefined) await opts.preview()
   if (opts.signal.aborted) return 0
   await playScript(lines, { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
-  return 0
+  return estimate?.left ?? 0
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
