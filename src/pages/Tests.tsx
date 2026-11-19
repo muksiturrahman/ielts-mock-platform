@@ -1,9 +1,9 @@
 import { motion } from 'motion/react'
-import { BookOpen, Headphones, Mic, PenLine, Play, Search, Timer } from 'lucide-react'
+import { BookOpen, GraduationCap, Headphones, Mic, PenLine, Play, Search, Timer } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, Modal, PageHeader, Toggle, cx } from '../components/ui'
-import { availableModules, createAttempt, MODULE_LABEL, moduleMinutes } from '../lib/attempts'
+import { availableModules, createAttempt, MODULE_LABEL, MODULE_MINUTES, moduleMinutes } from '../lib/attempts'
 import { useDB } from '../lib/store'
 import type { ModuleKey, Test } from '../lib/types'
 
@@ -18,7 +18,9 @@ export default function Tests() {
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Test>()
   const shown = useMemo(
-    () => tests.filter(t => (filter === 'all' || t.variant === filter) && t.title.toLowerCase().includes(q.toLowerCase())),
+    () => tests
+      .filter(t => (filter === 'all' || t.variant === filter) && t.title.toLowerCase().includes(q.toLowerCase()))
+      .sort((a, b) => Number(availableModules(b).length === 4) - Number(availableModules(a).length === 4)), // full exams first
     [tests, filter, q],
   )
 
@@ -40,6 +42,16 @@ export default function Tests() {
         </label>
       </div>
 
+      <div className="mb-6 flex gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-slate-700">
+        <GraduationCap size={20} className="mt-0.5 shrink-0 text-brand-600" />
+        <div>
+          <b className="text-slate-900">New here? Start with a Full mock exam.</b> It's the complete test in the real order and timing:
+          Listening, Reading, Writing, then Speaking — about {fmtDuration(Object.values(MODULE_MINUTES).reduce((a, b) => a + b, 0))}.
+          Choose <b>Academic</b> if you're taking IELTS for university study, or <b>General Training</b> for work or migration.
+          <span className="text-slate-500"> Practice cards are short drills for one task.</span>
+        </div>
+      </div>
+
       {shown.length === 0 ? (
         <Empty icon={<BookOpen />} title="No tests found">Publish a test in Admin or change the filter.</Empty>
       ) : (
@@ -59,7 +71,7 @@ function TestCard({ test, index, onStart }: { test: Test; index: number; onStart
     <motion.div
       initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06, duration: 0.4 }}
       whileHover={{ y: -4 }}
-      className="card group relative flex flex-col overflow-hidden p-5 transition-shadow hover:shadow-xl hover:shadow-brand-500/10"
+      className={cx('card group relative flex flex-col overflow-hidden p-5 transition-shadow hover:shadow-xl hover:shadow-brand-500/10', full && 'ring-2 ring-brand-300')}
     >
       <div className={cx('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', test.variant === 'academic' ? 'from-brand-500 to-violet-500' : 'from-emerald-500 to-teal-500')} />
       <div className="mb-3 flex items-center gap-2">
@@ -67,6 +79,11 @@ function TestCard({ test, index, onStart }: { test: Test; index: number; onStart
         {full ? <Badge tone="violet">Full mock</Badge> : <Badge>Practice</Badge>}
       </div>
       <h3 className="font-display text-lg font-bold text-slate-900">{test.title}</h3>
+      {full && (
+        <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-brand-600">
+          <Timer size={13} /> Real exam format · 4 parts · about {fmtDuration(mods.reduce((n, m) => n + moduleMinutes(test, m), 0))}
+        </p>
+      )}
       <p className="mt-1 flex-1 text-sm text-slate-500">{test.description}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {mods.map(m => {
@@ -78,7 +95,7 @@ function TestCard({ test, index, onStart }: { test: Test; index: number; onStart
           )
         })}
       </div>
-      <Button className="mt-5" onClick={onStart}><Play size={16} /> Start</Button>
+      <Button className="mt-5" variant={full ? 'primary' : 'secondary'} onClick={onStart}><Play size={16} /> {full ? 'Start full exam' : 'Start practice'}</Button>
     </motion.div>
   )
 }
@@ -169,3 +186,5 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
     </Modal>
   )
 }
+
+const fmtDuration = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}` : `${min} min`)
