@@ -98,6 +98,8 @@ export interface WritingTask {
   visualDescription?: string
   minWords: number
   minutes: number
+  /** A Band 8+ sample answer shown after the test (works without an AI key). */
+  sample?: string
 }
 
 export interface SpeakingPart1 {
@@ -108,6 +110,8 @@ export interface SpeakingPart2 {
   bullets: string[]
   closing: string // "and explain why ..."
   roundOff: string[] // 1–2 follow-up questions after the long turn
+  /** A Band 8+ sample long turn shown after the test. */
+  sample?: string
 }
 export interface SpeakingPart3 {
   theme: string
@@ -174,6 +178,8 @@ export interface WritingTaskEval {
   strengths: string[]
   improvements: string[]
   modelAnswer: string
+  /** The response rewritten one band higher (older results don't have it). */
+  nextBandAnswer?: string
 }
 
 export interface WritingResult {
@@ -266,6 +272,8 @@ export interface Attempt {
   modules: ModuleKey[]
   /** Practice: only these section indexes (reading/listening) or task numbers (writing) */
   sections?: number[]
+  /** Question-type drill (a typeLabel, e.g. "Matching"): only that type's questions are shown and marked. */
+  drill?: string
   /** Writing task numbers set when the attempt started (later test edits don't change them) */
   writingTasks?: (1 | 2)[]
   moduleIndex: number
@@ -305,6 +313,8 @@ export interface Profile {
   nationality: string
   firstLanguage: string
   targetBand: number
+  /** yyyy-mm-dd, for the study plan */
+  examDate?: string
 }
 
 export type AIProvider = 'gemini' | 'groq' | 'openrouter' | 'anthropic' | 'openai'
@@ -324,6 +334,8 @@ export interface Settings {
   fontScale: number
   contrast: 'standard' | 'yellow-black' | 'white-black'
   ttsRate: number
+  /** Paper-based Listening: 10 minutes to transfer answers instead of 2 to check. */
+  paperListening?: boolean
 }
 
 /** Spaced review of one mistake/correction (Leitner boxes). */

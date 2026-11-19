@@ -1,4 +1,5 @@
 import type { ListeningSection } from '../../lib/types'
+// voices: RECEPTIONIST=m, WOMAN=f, GUIDE=f, MAYA=f, BEN=m, TUTOR=m, LECTURER=f
 
 // Original seed content written for this app — not taken from any published IELTS test.
 

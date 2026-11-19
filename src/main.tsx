@@ -13,6 +13,8 @@ recoverInterruptedMarking()
 setInterval(recoverInterruptedMarking, 30_000) // marking whose tab died while this one stays open
 applyTheme() // before first paint, so dark mode doesn't flash white
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* HashRouter: GitHub Pages has no server-side routing fallback. */}

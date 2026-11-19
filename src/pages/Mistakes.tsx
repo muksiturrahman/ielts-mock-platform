@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Empty, PageHeader, cx, fmtDate } from '../components/ui'
 import { createAttempt } from '../lib/attempts'
+import { startDrill } from '../lib/analytics'
 import { collectMistakes, collectSpeakingNotes, collectVocab, collectWritingNotes, questionText, reviewItems, type Mistake } from '../lib/review'
 import { typeLabel } from '../lib/scoring'
 import { addVocab, deleteVocab, isDue, isMastered, markReview, REVIEW_DAYS, resetReview, useDB } from '../lib/store'
@@ -19,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: typeof Headphones }[] = [
 ]
 
 export default function Mistakes() {
+  const navigate = useNavigate()
   const attempts = useDB(d => d.attempts)
   const tests = useDB(d => d.tests)
   const mistakes = useMemo(() => collectMistakes(attempts, tests), [attempts, tests])
@@ -76,7 +78,8 @@ export default function Mistakes() {
       {worst && view !== 'mastered' && (tab === 'listening' || tab === 'reading') && (
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
           <Target size={18} className="shrink-0" />
-          <span>Your most frequent mistake type is <b>{worst[0]}</b> ({worst[1]} wrong). Focus your next practice there.</span>
+          <span className="flex-1">Your most frequent mistake type is <b>{worst[0]}</b> ({worst[1]} wrong). Focus your next practice there.</span>
+          <Button size="sm" onClick={() => { const a = startDrill(tests, attempts, tab, worst[0]); if (a) navigate(`/exam/${a.id}`) }}>Drill it</Button>
         </div>
       )}
 

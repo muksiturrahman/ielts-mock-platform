@@ -325,6 +325,7 @@ const WRITING_SCHEMA = obj({
   },
   strengths: strings,
   improvements: { ...strings, description: 'Concrete steps to reach the next band' },
+  nextBand: { type: 'string', description: 'The candidate’s response rewritten exactly ONE band higher than its overall band: same ideas and structure, fixing only the issues that hold it back' },
   modelAnswer: { type: 'string', description: 'Band 8.5–9 rewrite keeping the candidate’s ideas' },
 })
 
@@ -383,7 +384,7 @@ Question:
 ${task.prompt}${visual}
 
 ${asCandidateText('candidate_response', response || '(no response)')}`
-  const r = await callStructured<{ criteria: Record<string, unknown>; annotations?: unknown[]; strengths?: unknown; improvements?: unknown; modelAnswer?: unknown }>(
+  const r = await callStructured<{ criteria: Record<string, unknown>; annotations?: unknown[]; strengths?: unknown; improvements?: unknown; modelAnswer?: unknown; nextBand?: unknown }>(
     getDB().settings.writingPrompt.trim() || DEFAULT_WRITING_PROMPT, user, WRITING_SCHEMA, // a cleared rubric falls back to the default
   )
   const keys = ['task', 'coherence', 'lexical', 'grammar'] as const
@@ -397,6 +398,7 @@ ${asCandidateText('candidate_response', response || '(no response)')}`
     strengths: asStrings(r.strengths),
     improvements: asStrings(r.improvements),
     modelAnswer: String(r.modelAnswer ?? ''),
+    nextBandAnswer: String(r.nextBand ?? '') || undefined,
     wordCount: words,
     band: criteriaBand(keys.map(k => criteria[k].band)),
   }

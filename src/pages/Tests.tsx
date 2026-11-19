@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, Modal, PageHeader, Toggle, cx } from '../components/ui'
 import { availableModules, createAttempt, MODULE_LABEL, MODULE_MINUTES, moduleMinutes } from '../lib/attempts'
+import { startDrill } from '../lib/analytics'
+import { typeLabel } from '../lib/scoring'
 import { useDB } from '../lib/store'
 import { recognitionSupported } from '../lib/speech'
 import type { ModuleKey, Test } from '../lib/types'
@@ -66,8 +68,38 @@ export default function Tests() {
           {shown.map((t, i) => <TestCard key={t.id} test={t} index={i} onStart={() => setPicked(t)} />)}
         </div>
       )}
+      <Drills tests={tests} />
       {picked && <StartDialog test={picked} onClose={() => setPicked(undefined)} />}
     </div>
+  )
+}
+
+/** One-question-type practice: a part rich in that type, showing only those questions. */
+function Drills({ tests }: { tests: Test[] }) {
+  const attempts = useDB(d => d.attempts)
+  const navigate = useNavigate()
+  const types = (m: 'listening' | 'reading') => [...new Set(tests.flatMap(t => t[m]?.sections.flatMap(s => s.groups.map(g => typeLabel(g.type))) ?? []))]
+  return (
+    <section className="mt-10">
+      <h2 className="font-display text-xl font-bold text-slate-900">Question-type drills</h2>
+      <p className="mb-4 text-sm text-slate-500">Short untimed practice on one question type. Each drill uses a different part, and drills don't change your band estimate.</p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {(['listening', 'reading'] as const).map(m => {
+          const Icon = MODULE_ICON[m]
+          return (
+            <div key={m} className="card p-5">
+              <div className="mb-3 flex items-center gap-2 font-semibold text-slate-800"><Icon size={16} /> {MODULE_LABEL[m]}</div>
+              <div className="flex flex-wrap gap-2">
+                {types(m).map(t => (
+                  <button key={t} onClick={() => { const a = startDrill(tests, attempts, m, t); if (a) navigate(`/exam/${a.id}`) }}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-brand-400 hover:bg-brand-50">{t}</button>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 

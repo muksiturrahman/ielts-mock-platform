@@ -1,5 +1,5 @@
 import { attemptOverall, moduleBands } from './attempts'
-import { availableModules } from './attempts'
+import { availableModules, createAttempt } from './attempts'
 import { typeLabel } from './scoring'
 import type { Attempt, ModuleKey, Test } from './types'
 
@@ -36,7 +36,8 @@ export function skillAverages(attempts: Attempt[]): Partial<Record<ModuleKey, Sk
   const out: Partial<Record<ModuleKey, SkillBand>> = {}
   const recent = [...attempts].sort((a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt))
   for (const m of ['listening', 'reading', 'writing', 'speaking'] as ModuleKey[]) {
-    const bands = (mode: Attempt['mode']) => recent.filter(a => a.mode === mode).map(a => moduleBands(a)[m]).filter((x): x is number => typeof x === 'number').slice(0, 5)
+    // A one-type drill isn't a band estimate.
+    const bands = (mode: Attempt['mode']) => recent.filter(a => a.mode === mode && !a.drill).map(a => moduleBands(a)[m]).filter((x): x is number => typeof x === 'number').slice(0, 5)
     const full = bands('full')
     const source = full.length ? 'full' : 'practice'
     const v = mean(full.length ? full : bands('practice'))
@@ -49,11 +50,14 @@ export function skillAverages(attempts: Attempt[]): Partial<Record<ModuleKey, Sk
 export function practiceTarget(tests: Test[], attempts: Attempt[], w: Weakness): { test: Test; sections?: number[] } | undefined {
   const usable = tests.filter(t => t.status === 'published' && !t.deleted && availableModules(t).includes(w.module))
   if (w.module === 'listening' || w.module === 'reading') {
-    let best: { test: Test; sections: number[]; n: number } | undefined
+    // Rotate: the least-drilled part with this type, then the one with the most such questions.
+    const drilled = (testId: string, i: number) => attempts.filter(a => a.testId === testId && a.drill === w.type && a.sections?.[0] === i).length
+    let best: { test: Test; sections: number[]; n: number; used: number } | undefined
     for (const test of usable) {
       test[w.module]!.sections.forEach((s, i) => {
         const n = s.groups.filter(g => typeLabel(g.type) === w.type).reduce((c, g) => c + g.questions.length, 0)
-        if (n > (best?.n ?? 0)) best = { test, sections: [i], n }
+        const used = drilled(test.id, i)
+        if (n && (!best || used < best.used || (used === best.used && n > best.n))) best = { test, sections: [i], n, used }
       })
     }
     return best
@@ -63,6 +67,12 @@ export function practiceTarget(tests: Test[], attempts: Attempt[], w: Weakness):
   if (!test) return undefined
   // Writing: practise the task the criterion hurts most — Task 2 carries double weight.
   return { test, sections: w.module === 'writing' ? [test.writing!.tasks.some(t => t.number === 2) ? 2 : 1] : undefined }
+}
+
+/** Starts an untimed drill of one question type on the part that has been drilled least. */
+export function startDrill(tests: Test[], attempts: Attempt[], module: 'listening' | 'reading', type: string) {
+  const t = practiceTarget(tests, attempts, { area: type, detail: '', score: 0, module, type })
+  return t && createAttempt(t.test, { mode: 'practice', modules: [module], sections: t.sections, timed: false, drill: type })
 }
 
 /** Question types under 60% accuracy and rubric criteria averaging below 6, worst first. */

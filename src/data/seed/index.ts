@@ -1,11 +1,18 @@
-import type { Test } from '../../lib/types'
+import type { ListeningSection, Test } from '../../lib/types'
 import { update } from '../../lib/store'
 import { listeningSections } from './listening'
 import { academicReadingSections } from './academicReading'
 import { generalReadingSections } from './generalReading'
+import { mock2 } from './mock2'
+import { mock3 } from './mock3'
+import { mock4 } from './mock4'
+import { mock5 } from './mock5'
 import { academicExtraTask1, academicWritingTasks, generalWritingTasks, speakingSetA, speakingSetB } from './writingSpeaking'
 
 const T0 = Date.UTC(2026, 0, 1)
+
+/** Recorded audio for every seed part (made by scripts/make_audio.py); the read-aloud script stays as the fallback. */
+const recorded = (sections: ListeningSection[]) => sections.map(s => ({ ...s, audio: s.audio ?? `${import.meta.env.BASE_URL}audio/${s.id}.mp3` }))
 
 export const SEED_TESTS: Test[] = [
   {
@@ -16,7 +23,7 @@ export const SEED_TESTS: Test[] = [
     status: 'published',
     createdAt: T0,
     updatedAt: T0,
-    listening: { sections: listeningSections },
+    listening: { sections: recorded(listeningSections) },
     reading: { sections: academicReadingSections },
     writing: { tasks: academicWritingTasks },
     speaking: speakingSetA,
@@ -29,11 +36,12 @@ export const SEED_TESTS: Test[] = [
     status: 'published',
     createdAt: T0,
     updatedAt: T0,
-    listening: { sections: listeningSections },
+    listening: { sections: recorded(listeningSections) },
     reading: { sections: generalReadingSections },
     writing: { tasks: generalWritingTasks },
     speaking: speakingSetB,
   },
+  ...[mock2, mock3, mock4, mock5].map(t => ({ ...t, listening: t.listening && { sections: recorded(t.listening.sections) } })),
   ...academicExtraTask1.map((task, i): Test => ({
     id: `seed-task1-${i + 1}`,
     title: `Academic Writing Task 1 — ${task.kind === 'process' ? 'Process diagram' : task.chart?.kind === 'pie' ? 'Pie charts' : 'Table'}`,

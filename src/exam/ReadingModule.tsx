@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { drillSections } from '../lib/attempts'
 import { useState } from 'react'
 import { patchAttempt } from '../lib/store'
 import { jumpTo, partNav, QuestionNav, SplitPane, TopBar, useDeadline } from './ExamChrome'
@@ -8,7 +9,7 @@ import { QuestionGroupView } from './QuestionGroupView'
 import { SubmitButton } from './SubmitButton'
 
 export default function ReadingModule({ test, attempt, onSubmit, setAnswer, toggleFlag, setHighlights, exitButton }: ModuleProps) {
-  const all = test.reading!.sections
+  const all = drillSections(test.reading!.sections, attempt.drill)
   const indexes = attempt.sections ?? all.map((_, i) => i)
   const sections = indexes.map(i => all[i])
   const progress = attempt.progress.reading

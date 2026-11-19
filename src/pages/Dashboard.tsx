@@ -34,7 +34,7 @@ export default function Dashboard() {
   const practise = (w: Weakness) => {
     const target = practiceTarget(tests, attempts, w)
     if (!target) return navigate('/tests')
-    const a = createAttempt(target.test, { mode: 'practice', modules: [w.module], sections: target.sections, timed: false })
+    const a = createAttempt(target.test, { mode: 'practice', modules: [w.module], sections: target.sections, timed: false, drill: w.type })
     navigate(`/exam/${a.id}`)
   }
   const hour = new Date().getHours()

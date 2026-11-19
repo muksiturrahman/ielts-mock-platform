@@ -25,12 +25,12 @@ export interface ModuleProps {
   paused: boolean
 }
 
-const INSTRUCTIONS: Record<ModuleKey, (minutes: number, timed: boolean) => string[]> = {
-  listening: m => [
-    `Time: approximately ${m} minutes, including checking time.`,
+const INSTRUCTIONS: Record<ModuleKey, (minutes: number, timed: boolean, paper?: boolean) => string[]> = {
+  listening: (m, _t, paper) => [
+    `Time: approximately ${paper ? m + 8 : m} minutes, including ${paper ? 'transfer' : 'checking'} time.`,
     'Answer all the questions. You can change your answers at any time during the test.',
     'You will hear each part ONCE only. The recording plays automatically — there is no pause or rewind.',
-    'At the end of the recording you have two minutes to check your answers.',
+    paper ? 'Paper-based format: at the end of the recording you have ten minutes to transfer your answers.' : 'At the end of the recording you have two minutes to check your answers.',
     'Use the volume slider at the top of the screen at any time.',
   ],
   reading: (m, timed) => [
@@ -59,6 +59,7 @@ export default function ExamPage() {
   const navigate = useNavigate()
   const attempt = useDB(d => d.attempts.find(a => a.id === attemptId))
   const test = useDB(d => d.tests.find(t => t.id === attempt?.testId))
+  const paperListening = useDB(d => d.settings.paperListening)
   const settings = useDB(d => d.settings)
   const [warning, setWarning] = useState(false)
   const [between, setBetween] = useState<ModuleKey | null>(null)
@@ -137,11 +138,12 @@ export default function ExamPage() {
               <h1 className="mb-1 text-3xl font-bold">{MODULE_LABEL[module]}</h1>
               <p className="mb-6 opacity-60">
                 {attempt.mode === 'full' ? `Module ${attempt.moduleIndex + 1} of ${attempt.modules.length}` : 'Practice'}
+                {attempt.drill && ` · ${attempt.drill} drill`}
                 {attempt.sections && module !== 'speaking' && ` · ${module === 'writing' ? 'Task' : 'Part'} ${attempt.sections.map(s => (module === 'writing' ? s : s + 1)).join(', ')}`}
               </p>
               <h2 className="mb-2 font-bold uppercase tracking-wide">Instructions to candidates</h2>
               <ul className="mb-8 list-disc space-y-2 pl-5">
-                {INSTRUCTIONS[module](minutes, attempt.timed).map(l => <li key={l}>{l}</li>)}
+                {INSTRUCTIONS[module](minutes, attempt.timed, paperListening).map(l => <li key={l}>{l}</li>)}
               </ul>
               {module === 'listening' && (
                 <div className="mb-6 flex items-center gap-3 rounded-lg border p-3 text-sm exam-line exam-muted">

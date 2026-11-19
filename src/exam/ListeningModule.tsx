@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { drillSections } from '../lib/attempts'
 import { Headphones, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../lib/media'
@@ -10,7 +11,7 @@ import type { ModuleProps } from './ExamPage'
 import { QuestionGroupView } from './QuestionGroupView'
 import { SubmitButton } from './SubmitButton'
 
-const CHECK_MS = 2 * 60_000
+const checkMin = (paper?: boolean) => (paper ? 10 : 2)
 /** Before each part the candidate gets time to read its questions, as in the real recording. */
 const PREVIEW_SEC = 30
 
@@ -132,11 +133,12 @@ async function playPart(
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
-  const all = test.listening!.sections
+  const all = drillSections(test.listening!.sections, attempt.drill)
   const indexes = attempt.sections ?? all.map((_, i) => i)
   const sections = indexes.map(i => all[i])
   const progress = attempt.progress.listening
   const rate = useDB(d => d.settings.ttsRate)
+  const paper = useDB(d => d.settings.paperListening)
   const [volume, setVolume] = useState(0.9)
   const volumeRef = useRef(volume)
   volumeRef.current = volume
@@ -215,15 +217,17 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
           'error',
         ),
       })
-      if (i < sections.length - 1 && !ctrl.signal.aborted && !carry) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
+      // Most scripts (and so their recordings) already end with "That is the end of Part …" — don't say it twice.
+      const announced = /end of (part|section)/i.test(parseScript(sections[i].transcript).at(-1)?.text ?? '')
+      if (i < sections.length - 1 && !ctrl.signal.aborted && !carry && !announced) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return
     abortRef.current = null // finished: practice Replay may start a new run
     setPlaying(null)
     patchAttempt(attempt.id, a => ({
-      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + Math.max(0, CHECK_MS - carry * 1000) : undefined } }, // time away also ran past the recording
+      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + Math.max(0, checkMin(paper) * 60_000 - carry * 1000) : undefined } }, // time away also ran past the recording
     }))
-    await speak('That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
+    await speak(paper ? 'That is the end of the listening test. You now have ten minutes to transfer your answers to the answer sheet.' : 'That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
   }
 
   // Remember when the candidate left mid-recording (Exit, refresh, closing the tab) — a full mock skips that time on return.

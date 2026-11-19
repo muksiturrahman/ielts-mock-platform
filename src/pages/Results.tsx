@@ -4,6 +4,7 @@ import { Fragment, useEffect, useId, useState, type ReactNode } from 'react'
 import { Link, Navigate, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { ExamReview } from '../components/ExamReview'
 import { questionText, locateQuestion } from '../lib/review'
+import { writingChecks } from '../lib/writingCheck'
 import { Badge, BandRing, Button, Card, bandColor, cx, fmtBand, fmtDate, bandText } from '../components/ui'
 import { countWords } from '../lib/scoring'
 import { attemptOverall, markSpeaking, markWriting, MODULE_LABEL, moduleBands, writingTaskBand, writingTasksTaken } from '../lib/attempts'
@@ -38,7 +39,7 @@ export default function Results() {
           <div className="flex-1">
             <div className="flex flex-wrap gap-2">
               <Badge tone="violet">{attempt.variant === 'academic' ? 'Academic' : 'General Training'}</Badge>
-              <Badge tone="slate">{attempt.mode === 'full' ? 'Full mock' : 'Practice'}</Badge>
+              <Badge tone="slate">{attempt.mode === 'full' ? 'Full mock' : attempt.drill ? `${attempt.drill} drill` : 'Practice'}</Badge>
               {attempt.review && <Badge tone="green">Examiner reviewed</Badge>}
               {attempt.tabSwitches > 0 && <Badge tone="amber">Left window {attempt.tabSwitches}×</Badge>}
             </div>
@@ -86,7 +87,7 @@ export default function Results() {
           {tab === 'overview' && <Overview attempt={attempt} bands={bands} onOpen={setTab} />}
           {(tab === 'listening' || tab === 'reading') && attempt.results[tab] && <ObjectiveView result={attempt.results[tab]!} test={test} module={tab} attempt={attempt} focus={focus} />}
           {tab === 'writing' && <WritingView attempt={attempt} test={test} />}
-          {tab === 'speaking' && <SpeakingView attempt={attempt} />}
+          {tab === 'speaking' && <SpeakingView attempt={attempt} test={test} />}
           {tab === 'report' && <TestReportForm attempt={attempt} />}
         </motion.div>
       </AnimatePresence>
@@ -323,13 +324,45 @@ function WritingView({ attempt, test }: { attempt: Attempt; test?: Test }) {
   return (
     <div className="space-y-6">
       {w?.status !== 'done' && <Card className="p-6"><MarkingState status={w?.status} error={w?.error} retry={() => markWriting(attempt.id)}>{null}</MarkingState></Card>}
+      <InstantChecks attempt={attempt} test={test} />
       {tasks.map(({ n, ev, override }) => <WritingTaskCard key={n} n={n} ev={ev} text={n === 1 ? attempt.writing.task1 : attempt.writing.task2} prompt={test?.writing?.tasks.find(t => t.number === n)?.prompt} override={override} />)}
     </div>
   )
 }
 
+/** Rule-based feedback shown for every task, with or without an AI key. */
+function InstantChecks({ attempt, test }: { attempt: Attempt; test?: Test }) {
+  const [open, setOpen] = useState<string>()
+  return (
+    <Card className="p-6">
+      <div className="font-display text-lg font-bold">Instant checks</div>
+      <p className="mb-4 text-sm text-slate-500">Automatic checks that need no AI key. They don't give a band — they show what examiners notice first.</p>
+      <div className="grid gap-6 md:grid-cols-2">
+        {writingTasksTaken(attempt).map(n => {
+          const task = test?.writing?.tasks.find(t => t.number === n)
+          const text = n === 1 ? attempt.writing.task1 : attempt.writing.task2
+          return (
+            <div key={n}>
+              <div className="mb-2 text-sm font-bold text-slate-700">Task {n}</div>
+              <ul className="space-y-2">
+                {writingChecks(text, task?.minWords ?? (n === 1 ? 150 : 250), task?.kind === 'letter').map(c => (
+                  <li key={c.label} className="flex gap-2 text-sm">
+                    {c.ok ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" /> : <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />}
+                    <span><b className="text-slate-800">{c.label}.</b> <span className="text-slate-600">{c.detail}</span></span>
+                  </li>
+                ))}
+              </ul>
+              <Rewrites versions={[[`sample${n}`, 'Sample Band 8+ answer', task?.sample]]} open={open} setOpen={setOpen} />
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
 function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev?: WritingTaskEval; text: string; prompt?: string; override?: Partial<Record<'task' | 'coherence' | 'lexical' | 'grammar', number>> }) {
-  const [showModel, setShowModel] = useState(false)
+  const [showModel, setShowModel] = useState<string>()
   const crit = [['task', n === 1 ? 'Task Achievement' : 'Task Response'], ['coherence', 'Coherence & Cohesion'], ['lexical', 'Lexical Resource'], ['grammar', 'Grammatical Range & Accuracy']] as const
   return (
     <Card className="p-6">
@@ -368,17 +401,34 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev?: Wri
         <List title="Strengths" items={ev.strengths} tone="text-emerald-600" />
         <List title="How to reach the next band" items={ev.improvements} tone="text-brand-600" />
       </div>}
-      {ev?.modelAnswer && <div className="mt-6">
-        <Button variant="secondary" onClick={() => setShowModel(s => !s)}><Sparkles size={15} /> {showModel ? 'Hide' : 'Show'} Band 8.5+ model answer</Button>
-        <AnimatePresence>
-          {showModel && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="mt-3 whitespace-pre-wrap rounded-xl bg-gradient-to-br from-brand-50 to-violet-50 p-5 leading-8 text-slate-700">{ev.modelAnswer}</div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>}
+      <Rewrites versions={[
+        ['next', `Your ${n === 1 ? 'answer' : 'essay'} one band higher`, ev?.nextBandAnswer],
+        ['top', `Your ${n === 1 ? 'answer' : 'essay'} at Band 8.5+`, ev?.modelAnswer],
+      ]} open={showModel} setOpen={setShowModel} />
     </Card>
+  )
+}
+
+/** Buttons that each reveal one rewrite: the candidate's text improved by the AI, or the test's sample answer. */
+function Rewrites({ versions, open, setOpen }: { versions: [string, string, string | undefined][]; open?: string; setOpen: (k?: string) => void }) {
+  const shown = versions.filter(v => v[2])
+  if (!shown.length) return null
+  const text = shown.find(v => v[0] === open)?.[2]
+  return (
+    <div className="mt-6">
+      <div className="flex flex-wrap gap-2">
+        {shown.map(([k, label]) => (
+          <Button key={k} variant={open === k ? 'primary' : 'secondary'} aria-pressed={open === k} onClick={() => setOpen(open === k ? undefined : k)}><Sparkles size={15} /> {label}</Button>
+        ))}
+      </div>
+      <AnimatePresence>
+        {text && (
+          <motion.div key={open} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="mt-3 whitespace-pre-wrap rounded-xl bg-gradient-to-br from-brand-50 to-violet-50 p-5 leading-8 text-slate-700">{text}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -391,7 +441,8 @@ function List({ title, items, tone }: { title: string; items: string[]; tone: st
   )
 }
 
-function SpeakingView({ attempt }: { attempt: Attempt }) {
+function SpeakingView({ attempt, test }: { attempt: Attempt; test?: Test }) {
+  const [sample, setSample] = useState<string>()
   const s = attempt.results.speaking
   const m = s?.metrics
   return (
@@ -450,6 +501,7 @@ function SpeakingView({ attempt }: { attempt: Attempt }) {
               </div>
               <div className="mb-2 text-sm font-semibold text-slate-700">{a.question}</div>
               <Annotated text={a.transcript || '(no speech recognised)'} notes={(s?.notes ?? []).map((n: TranscriptNote) => ({ quote: n.quote, label: n.type, detail: `${n.note}${n.upgrade ? ` → ${n.upgrade}` : ''}`, tone: TONE[n.type] ?? '' }))} />
+              {a.part === 2 && a.question === test?.speaking?.part2.topic && <Rewrites versions={[['sample', 'Sample Band 8+ long turn', test.speaking.part2.sample]]} open={sample} setOpen={setSample} />}
             </div>
           ))}
         </div>

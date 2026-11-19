@@ -13,7 +13,8 @@ All data stays in your browser.
 ## Features
 
 **Exam engine (CD-IELTS look and feel)**
-- **Listening:** 4 parts and 40 questions. The recording plays once only (no pause or rewind), with a volume slider, a sound check and 2 minutes of checking time. It uses uploaded audio, or reads the script aloud with a different voice per speaker.
+- **Tests included:** 6 full mocks (3 Academic, 3 General Training), each with its own Listening, Reading, Writing and Speaking, plus 4 extra Academic Task 1 practice papers. All content is original.
+- **Listening:** 4 parts and 40 questions. The recording plays once only (no pause or rewind), with a volume slider, a sound check and 2 minutes of checking time (or 10 minutes to transfer answers in the paper-based option, Settings). Every built-in part has a recorded MP3 with British and American voices and the real reading pauses (`scripts/make_audio.py`, made offline with the free Piper voices). Without audio it reads the script aloud, with a different voice per speaker.
 - **Reading:** a split screen with a draggable divider. Right-click the passage to **highlight** text or **add a note**. Academic and General Training use separate band tables.
 - **Writing:** Task 1 (charts drawn from data, process diagrams, maps, or a letter) and Task 2. Live word count, spell-check and autocorrect disabled, autosave about a second after you stop typing.
 - **Speaking:** mic check with a level meter, an AI examiner voice, Parts 1–3, a Part 2 cue card with 1 minute of prep and a scratchpad, recording per answer, live transcription, and detection of pauses and filler words.
@@ -23,7 +24,8 @@ All data stays in your browser.
 **Marking**
 - **Listening and Reading:** answers are compared ignoring case, punctuation and spacing. British/American spellings (`colour`/`color`), times (`10 am` / `10:00am`), dates, numbers written as words, and optional words (`(the) library`) are all accepted. Word limits are enforced.
 - **Band conversion:** raw scores convert to bands with the official tables. Overall band rounding follows IELTS rules (.25 rounds up to .5, .75 rounds up to the next whole band).
-- **Writing (AI examiner):** a band for each criterion (TA/TR, CC, LR, GRA), annotations on the candidate's own text, strengths, next steps, and a **Band 8.5+ model answer** built on the candidate's ideas. Task 2 counts double.
+- **Writing (AI examiner):** a band for each criterion (TA/TR, CC, LR, GRA), annotations on the candidate's own text, strengths, next steps, a rewrite **one band higher** and a **Band 8.5+ version** built on the candidate's ideas. Task 2 counts double.
+- **Without an AI key:** instant Writing checks (length, paragraphs, linking words, repetition, sentence length, formal style) and a Band 8+ **sample answer** for every Writing task and Speaking cue card.
 - **Speaking (AI examiner):** each criterion is marked from the transcripts plus measured speech rate, pauses and fillers. Notes are attached to the transcript, and recordings can be played back.
 
 **Platform**
@@ -31,6 +33,10 @@ All data stays in your browser.
 - **Full review of past tests:** reopen any finished Listening or Reading module exactly as you sat it (passage, your highlights, the transcript) with every answer marked, or switch to a compact answer sheet: your answer, the correct answer and the explanation for each question. Click a wrong-question chip to jump straight to it.
 - **Mistakes notebook:** every wrong answer from every test in one place, filterable by module and question type, with your most frequent mistake type, the explanation, a link back to the question in context, and **Retry this part**. Writing and Speaking corrections from the AI are collected there too.
 - **Spaced review & vocabulary** — mark each mistake “Got it” and it returns after 1, 3 and 7 days until mastered; a Vocabulary tab collects the AI’s better-word suggestions plus your own words. Focus areas open the exact part with most questions of your weak type, and skill bands come from full mocks (practice is shown as an estimate).
+- **Question-type drills:** short untimed practice on one type (e.g. True/False/Not Given) showing only those questions, rotating through different parts. Drills don't change the band estimate.
+- **Study plan:** a 7-day plan from your target band, exam date and weakest skills, with a weekly full mock and a taper before the exam.
+- **Vocabulary:** 150 topic words in 10 IELTS topics with definitions, example sentences, a gap-fill quiz, and saving to the review notebook.
+- **Phones and offline:** the exam screens switch to one pane at a time on a phone; the app installs to the home screen and opens without internet (offline, Listening reads the script aloud).
 - **History filters:** by mode (full mock or practice) and by module, with right/total counts per attempt.
 - **Dark theme:** Light, Dark or System, from the sidebar.
 - **Modes:** full mock (all modules in a row) or practice per module or part, timed or untimed, with instant answer checking and explanations.

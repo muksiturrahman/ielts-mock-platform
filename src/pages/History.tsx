@@ -42,7 +42,7 @@ export default function HistoryPage() {
                 <div className="min-w-48 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-slate-900">{a.testTitle}</span>
-                    <Badge tone={a.mode === 'full' ? 'violet' : 'slate'}>{a.mode === 'full' ? 'Full mock' : 'Practice'}</Badge>
+                    <Badge tone={a.mode === 'full' ? 'violet' : 'slate'}>{a.mode === 'full' ? 'Full mock' : a.drill ? `${a.drill} drill` : 'Practice'}</Badge>
                     {a.status === 'in_progress' && <Badge tone="amber">In progress</Badge>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">

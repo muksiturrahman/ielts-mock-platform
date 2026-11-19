@@ -118,7 +118,9 @@ export async function playScript(
     opts.onLine?.(i)
     const l = lines[i]
     await speak(l.text, { voice: voiceFor(l.speaker, speakers.indexOf(l.speaker)), rate: opts.rate, volume: opts.getVolume() })
-    await new Promise(r => setTimeout(r, l.speaker === 'NARRATOR' ? 700 : 250))
+    // Mid-part "you have some time to look at questions …" gets real reading time (the opening one has its own preview).
+    const reading = i > 0 && l.speaker === 'NARRATOR' && /time to look at|^now look at questions/i.test(l.text)
+    await new Promise<void>(r => { const t = setTimeout(r, reading ? 20_000 : l.speaker === 'NARRATOR' ? 700 : 250); opts.signal.addEventListener('abort', () => { clearTimeout(t); r() }, { once: true }) })
   }
 }
 

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
+import { BookOpenCheck, CalendarDays, ClipboardCheck, History, Languages, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
 import { Component, Fragment, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Button, ToastProvider, cx, useDialogFocus, useToast } from './components/ui'
@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard'
 import Tests from './pages/Tests'
 import HistoryPage from './pages/History'
 import Mistakes from './pages/Mistakes'
+import Plan from './pages/Plan'
+import Vocabulary from './pages/Vocabulary'
 import Results from './pages/Results'
 import Admin from './pages/Admin'
 import TestEditor from './pages/TestEditor'
@@ -22,6 +24,8 @@ const NAV = [
   { to: '/tests', label: 'Mock tests', icon: BookOpenCheck },
   { to: '/history', label: 'My results', icon: History },
   { to: '/mistakes', label: 'Mistakes', icon: NotebookPen },
+  { to: '/plan', label: 'Study plan', icon: CalendarDays },
+  { to: '/vocabulary', label: 'Vocabulary', icon: Languages },
   { to: '/examiner', label: 'Examiner', icon: ClipboardCheck, teacher: true },
   { to: '/admin', label: 'Admin', icon: ShieldCheck, teacher: true },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -202,6 +206,8 @@ export default function App() {
                 <Route path="/tests" element={<Tests />} />
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="/mistakes" element={<Mistakes />} />
+                <Route path="/plan" element={<Plan />} />
+                <Route path="/vocabulary" element={<Vocabulary />} />
                 <Route path="/results/:attemptId" element={<Results />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/tests/:testId" element={<TestEditor />} />

@@ -1,6 +1,6 @@
 import { Database, Download, RotateCcw, Upload, User, Volume2 } from 'lucide-react'
 import { useRef, type ReactNode } from 'react'
-import { Button, Card, PageHeader, useToast } from '../components/ui'
+import { Button, Card, PageHeader, Toggle, useToast } from '../components/ui'
 import { ensureSeeded } from '../data/seed'
 import { AISection } from './AISettings'
 import { speak } from '../lib/speech'
@@ -65,6 +65,10 @@ export default function Settings() {
           </div>
           <span className="mt-1 block text-xs text-slate-400">Used when a listening part has no uploaded audio, and for the speaking examiner.</span>
         </label>
+        <div>
+          <Toggle checked={Boolean(settings.paperListening)} onChange={v => setSettings({ paperListening: v })} label="Paper-based Listening (10 minutes to transfer answers)" />
+          <span className="mt-1 block text-xs text-slate-400">Off = computer-delivered: 2 minutes to check at the end.</span>
+        </div>
         <label><span className="label">Examiner name (for reviews)</span><input className="input" value={settings.examinerName} onChange={e => setSettings({ examinerName: e.target.value })} /></label>
       </Section>
 

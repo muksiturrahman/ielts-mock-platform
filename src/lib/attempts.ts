@@ -1,8 +1,8 @@
 import { evaluateSpeaking, evaluateWriting } from './ai'
 import { computeMetrics } from './speech'
-import { criteriaBand, overallBand, scoreObjective, writingBand } from './scoring'
+import { criteriaBand, overallBand, scoreObjective, typeLabel, writingBand } from './scoring'
 import { getDB, patchAttempt, saveAttempt, uid } from './store'
-import type { Attempt, ModuleKey, Test, WritingTaskEval } from './types'
+import type { Attempt, ModuleKey, QuestionGroup, Test, WritingTaskEval } from './types'
 
 /** Official timings in minutes. Listening = 30 + 2 min checking time (computer-delivered). */
 export const MODULE_MINUTES: Record<ModuleKey, number> = { listening: 32, reading: 60, writing: 60, speaking: 14 }
@@ -32,8 +32,14 @@ export function moduleMinutes(test: Test, module: ModuleKey, sections?: number[]
   return MODULE_MINUTES[module]
 }
 
-export function createAttempt(test: Test, opts: { mode: 'full' | 'practice'; modules: ModuleKey[]; sections?: number[]; timed: boolean }): Attempt {
+/** A drill keeps only the groups of its question type. */
+export function drillSections<S extends { groups: QuestionGroup[] }>(sections: S[], drill?: string): S[] {
+  return drill ? sections.map(s => ({ ...s, groups: s.groups.filter(g => typeLabel(g.type) === drill) })) : sections
+}
+
+export function createAttempt(test: Test, opts: { mode: 'full' | 'practice'; modules: ModuleKey[]; sections?: number[]; timed: boolean; drill?: string }): Attempt {
   const attempt: Attempt = {
+    ...(opts.drill && { drill: opts.drill }),
     id: uid('att-'),
     testId: test.id,
     testTitle: test.title,
@@ -91,8 +97,8 @@ export function submitModule(attemptId: string, module: ModuleKey) {
   // Timer and button can fire together: submit (and start paid AI marking) only once.
   if (!a || !test || a.progress[module]?.submittedAt) return
   const results = { ...a.results }
-  if (module === 'listening' && test.listening) results.listening = scoreObjective(test.listening.sections, a.answers, 'listening', a.variant, a.sections)
-  if (module === 'reading' && test.reading) results.reading = scoreObjective(test.reading.sections, a.answers, 'reading', a.variant, a.sections)
+  if (module === 'listening' && test.listening) results.listening = scoreObjective(drillSections(test.listening.sections, a.drill), a.answers, 'listening', a.variant, a.sections)
+  if (module === 'reading' && test.reading) results.reading = scoreObjective(drillSections(test.reading.sections, a.drill), a.answers, 'reading', a.variant, a.sections)
   if (module === 'writing') results.writing = { status: 'pending' }
   if (module === 'speaking') results.speaking = { status: 'pending', metrics: computeMetrics(a.speaking.filter(s => !s.warmup)) }
 
