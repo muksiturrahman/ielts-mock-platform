@@ -42,7 +42,7 @@ export default function ReadingModule({ test, attempt, onSubmit, setAnswer, togg
   return (
     <>
       <TopBar title="Reading" remaining={remaining} right={exitButton} />
-      <div className="flex shrink-0 items-center justify-between border-b px-6 py-2.5 exam-line exam-muted">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
         <div>
           <span className="font-bold">{section.title}</span>
           <span className="ml-3 text-sm opacity-70">Read the text and answer questions {parts[part].numbers[0]?.n}–{parts[part].numbers.at(-1)?.n}.</span>

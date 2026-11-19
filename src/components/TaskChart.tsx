@@ -64,7 +64,7 @@ export function TaskChart({ chart }: { chart: ChartData }) {
           <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'currentColor' }} label={chart.xLabel ? { value: chart.xLabel, position: 'insideBottom', offset: -10, fontSize: 12 } : undefined} />
           <YAxis tick={{ fontSize: 12, fill: 'currentColor' }} label={chart.yLabel ? { value: chart.yLabel, angle: -90, position: 'insideLeft', fontSize: 12 } : undefined} />
           <Tooltip formatter={v => `${v}${unit}`} />
-          <Legend verticalAlign="top" height={30} />
+          <Legend verticalAlign="top" wrapperStyle={{ fontSize: 13, paddingBottom: 8 }} />
           {chart.series.map((s, i) =>
             chart.kind === 'line'
               ? <Line key={s.name} type="monotone" dataKey={s.name} stroke={COLORS[i % COLORS.length]} strokeWidth={2.5} dot={{ r: 3 }} />

@@ -54,16 +54,16 @@ export default function Results() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 p-4 sm:gap-4 sm:p-6 md:grid-cols-4">
           {attempt.modules.map((m, i) => {
             const Icon = MODULE_ICON[m]
             const status = m === 'writing' ? attempt.results.writing?.status : m === 'speaking' ? attempt.results.speaking?.status : attempt.results[m] ? 'done' : undefined
             return (
               <motion.button key={m} aria-pressed={tab === m} onClick={() => setTab(m)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.06 }}
-                className="flex items-center gap-3 rounded-2xl border border-slate-100 p-3 text-left transition hover:border-brand-200 hover:bg-brand-50/40">
+                className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-slate-100 p-3 text-center transition hover:border-brand-200 hover:bg-brand-50/40 sm:flex-row sm:gap-3 sm:text-left">
                 <BandRing band={bands[m]} size={64} stroke={6} />
-                <div>
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-800"><Icon size={14} />{MODULE_LABEL[m]}</div>
+                <div className="min-w-0">
+                  <div className="flex items-center justify-center gap-1.5 text-sm sm:justify-start font-semibold text-slate-800"><Icon size={14} />{MODULE_LABEL[m]}</div>
                   <StatusLine status={status} />
                 </div>
               </motion.button>

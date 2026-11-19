@@ -77,22 +77,22 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
   return (
     <>
       <TopBar title="Writing" remaining={remaining} right={exitButton} />
-      <div className="flex shrink-0 items-center justify-between border-b px-6 py-2.5 exam-line exam-muted">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
         <div>
           <span className="font-bold">Part {task.number}</span>
           <span className="ml-3 text-sm opacity-70">You should spend about {task.minutes} minutes on this task. Write at least {task.minWords} words.</span>
         </div>
         <AnimatePresence>
           {savedAt && (
-            <motion.span key={savedAt} initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} className="flex items-center gap-1 text-xs">
-              <CheckCircle2 size={13} /> Saved {new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            <motion.span key={savedAt} initial={{ opacity: 0 }} animate={{ opacity: 0.7 }} className="flex shrink-0 items-center gap-1 text-xs">
+              <CheckCircle2 size={13} /> Saved<span className="hidden sm:inline">{' '}{new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
             </motion.span>
           )}
         </AnimatePresence>
       </div>
       <AnimatePresence mode="wait">
         <motion.div key={task.id} className="flex min-h-0 flex-1" initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.25 }}>
-          <SplitPane
+          <SplitPane labels={['Task', 'Your answer']}
             left={
               <div>
                 <p className="whitespace-pre-line leading-relaxed">{task.prompt}</p>

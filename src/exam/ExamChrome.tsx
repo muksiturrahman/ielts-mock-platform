@@ -53,7 +53,7 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
     return () => { document.removeEventListener('pointerdown', out); document.removeEventListener('keydown', esc) }
   }, [open])
   return (
-    <header className="relative z-20 flex h-14 shrink-0 items-center gap-4 border-b px-4 exam-line exam-panel">
+    <header className="relative z-20 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:gap-4 sm:px-4 exam-line exam-panel">
       <span className="sr-only" aria-live="polite">{mark ? `${mark} minute${mark > 1 ? 's' : ''} remaining` : ''}</span>
       <div className="flex items-center gap-3">
         <span className="rounded bg-[#e11d2e] px-2 py-0.5 text-sm font-black tracking-wide text-white">IELTS</span>
@@ -65,10 +65,10 @@ export function TopBar({ title, remaining, right, volume, onVolume }: { title: s
       <div className="flex flex-1 justify-center">
         {remaining !== undefined && (
           <button onClick={() => setHidden(h => !h)} title={hidden ? 'Show time' : 'Hide time'}
-            className={`flex items-center gap-2 rounded-md px-3 py-1 font-mono text-[15px] font-bold tabular-nums transition ${low ? 'animate-pulse bg-rose-600 text-white' : 'exam-muted'}`}>
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 font-mono sm:gap-2 sm:px-3 text-[15px] font-bold tabular-nums transition ${low ? 'animate-pulse bg-rose-600 text-white' : 'exam-muted'}`}>
             <Clock size={15} />
             {hidden ? 'Time hidden' : `${fmtClock(remaining)} left`}
-            {hidden ? <Eye size={14} /> : <EyeOff size={14} className="opacity-50" />}
+            {hidden ? <Eye size={14} className="hidden sm:block" /> : <EyeOff size={14} className="hidden opacity-50 sm:block" />}
           </button>
         )}
       </div>
@@ -130,8 +130,8 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
   onPrev?: () => void; onNext?: () => void; action?: ReactNode
 }) {
   return (
-    <footer className="z-20 flex min-h-16 shrink-0 items-center gap-2 overflow-x-auto border-t px-3 py-2 exam-line exam-panel scroll-thin">
-      <div className="flex flex-1 items-center gap-2">
+    <footer className="z-20 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-t px-3 py-2 exam-line exam-panel md:flex-nowrap">
+      <div className="flex min-w-0 flex-1 basis-full items-center gap-2 overflow-x-auto scroll-thin md:basis-auto">
         {parts.map((p, i) => {
           const done = p.numbers.filter(x => x.answered).length
           return (
@@ -141,7 +141,7 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
                 {i !== current && <span className="ml-1.5 text-xs font-normal opacity-60">{done} of {p.numbers.length}</span>}
               </button>
               {i === current && (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1 md:flex-wrap">
                   {p.numbers.map(x => (
                     <button key={x.n} onClick={() => onJump(x.n)} aria-current={currentNumber === x.n ? 'true' : undefined} aria-label={`Question ${x.n}${x.answered ? ', answered' : ''}${x.flagged ? ', flagged' : ''}`}
                       className={`relative h-7 min-w-7 rounded border text-xs font-semibold transition hover:scale-110 exam-line
@@ -156,7 +156,7 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
           )
         })}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         {onPrev && <button onClick={onPrev} className="rounded-md border p-2 exam-line hover:opacity-70" aria-label="Previous"><ChevronLeft size={18} /></button>}
         {onNext && <button onClick={onNext} className="rounded-md border p-2 exam-line hover:opacity-70" aria-label="Next"><ChevronRight size={18} /></button>}
         {action}
@@ -166,6 +166,7 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
 }
 
 export function jumpTo(n: number, tries = 30) {
+  if (tries === 30) window.dispatchEvent(new Event('exam:show-questions'))
   const el = document.getElementById(`q-${n}`)
   // Switching part animates the old one out first: wait (up to ~0.5 s) for the question to mount.
   if (!el) { if (tries > 0) requestAnimationFrame(() => jumpTo(n, tries - 1)); return }
@@ -176,8 +177,15 @@ export function jumpTo(n: number, tries = 30) {
 }
 
 /** Draggable split pane (passage | questions), like the CD-IELTS layout. */
-export function SplitPane({ left, right }: { left: ReactNode; right: ReactNode }) {
+export function SplitPane({ left, right, labels = ['Passage', 'Questions'] }: { left: ReactNode; right: ReactNode; labels?: [string, string] }) {
   const [pct, setPct] = useState(50)
+  // Phones show one pane at a time, switched by tabs; a question jump opens the questions pane.
+  const [tab, setTab] = useState(0)
+  useEffect(() => {
+    const show = () => setTab(1)
+    window.addEventListener('exam:show-questions', show)
+    return () => window.removeEventListener('exam:show-questions', show)
+  }, [])
   const ref = useRef<HTMLDivElement>(null)
   const drag = (e: React.PointerEvent) => {
     const box = ref.current!.getBoundingClientRect()
@@ -188,8 +196,14 @@ export function SplitPane({ left, right }: { left: ReactNode; right: ReactNode }
     e.preventDefault()
   }
   return (
-    <div ref={ref} className="flex min-h-0 flex-1 flex-col md:flex-row">
-      <div className="min-h-0 overflow-y-auto p-6 scroll-thin md:p-8" style={{ flexBasis: `${pct}%` }}>{left}</div>
+    <div ref={ref} className="flex min-h-0 min-w-0 flex-1 flex-col md:flex-row">
+      <div role="tablist" className="flex shrink-0 border-b exam-line md:hidden">
+        {labels.map((l, i) => (
+          <button key={l} role="tab" aria-selected={tab === i} onClick={() => setTab(i)}
+            className={`flex-1 py-2.5 text-sm font-semibold ${tab === i ? 'border-b-2 border-blue-600 text-blue-600' : 'opacity-60'}`}>{l}</button>
+        ))}
+      </div>
+      <div className={`min-h-0 min-w-0 flex-1 overflow-y-auto p-4 scroll-thin md:flex-none md:basis-[var(--split)] md:p-8 ${tab === 0 ? '' : 'hidden md:block'}`} style={{ '--split': `${pct}%` } as React.CSSProperties}>{left}</div>
       <div
         onPointerDown={drag} tabIndex={0} role="separator" aria-label="Resize panels" aria-orientation="vertical"
         aria-valuemin={25} aria-valuemax={75} aria-valuenow={Math.round(pct)}
@@ -203,7 +217,7 @@ export function SplitPane({ left, right }: { left: ReactNode; right: ReactNode }
       >
         <div className="h-10 w-0.5 rounded bg-current opacity-30 transition group-hover:opacity-70" />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-6 scroll-thin md:p-8">{right}</div>
+      <div className={`min-h-0 min-w-0 flex-1 overflow-y-auto p-4 scroll-thin md:p-8 ${tab === 1 ? '' : 'hidden md:block'}`}>{right}</div>
     </div>
   )
 }

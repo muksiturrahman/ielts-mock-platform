@@ -258,7 +258,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     <>
       <audio ref={audioRef} preload="auto" className="hidden" />
       <TopBar title="Listening" remaining={remaining} volume={volume} onVolume={setVolume} right={exitButton} />
-      <div className="flex shrink-0 items-center gap-4 border-b px-6 py-2.5 exam-line exam-muted">
+      <div className="flex shrink-0 items-center gap-4 gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
         <span className="font-bold">{section.title}</span>
         <span className="text-sm opacity-70">Listen and answer questions {parts[view].numbers[0]?.n}–{parts[view].numbers.at(-1)?.n}.</span>
         <div className="ml-auto flex items-center gap-2 text-sm">

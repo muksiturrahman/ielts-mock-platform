@@ -299,10 +299,10 @@ export default function SpeakingModule({ test, attempt, onSubmit, exitButton, pa
   return (
     <>
       <TopBar title="Speaking" right={exitButton} />
-      <div className="flex shrink-0 items-center gap-3 border-b px-6 py-2.5 exam-line exam-muted">
-        <span className="font-bold">{partTitle}</span>
-        {step && <span className="text-sm opacity-70">Question {index + 1} of {steps.length}</span>}
-        <div className="ml-auto h-1.5 w-48 overflow-hidden rounded-full bg-black/10">
+      <div className="flex shrink-0 items-center gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
+        <span className="whitespace-nowrap font-bold">{partTitle}</span>
+        {step && <span className="whitespace-nowrap text-sm opacity-70">Question {index + 1} of {steps.length}</span>}
+        <div className="ml-auto h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-black/10 sm:w-48">
           <motion.div className="h-full bg-[#1d4ed8]" animate={{ width: `${(Math.min(index, steps.length) / steps.length) * 100}%` }} />
         </div>
       </div>
