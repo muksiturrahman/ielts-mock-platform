@@ -134,10 +134,12 @@ function numberWords(t: string, ordinals = true): string {
 
 export function normalizeAnswer(s: string): string {
   let t = numberWords(s.toLowerCase().trim().replace(/&/g, ' and '))
-  // 24-hour clock written with a colon ("15:00") = "3 pm" (not "15.00", which may be a price)
-  t = t.replace(/\b(1[3-9]|2[0-3]):(\d{2})\b(?!\s*[ap]\.?m)/g, (_m, h, mm) => `${Number(h) - 12}:${mm} pm`)
-  // times: 10am, 10 am, 10.00 am, 10:00am → 10.00 am (but not "2 ambulances")
-  t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (_m, h, mm, ap) => `${Number(h)}:${mm ?? '00'} ${ap[0]}m`)
+  // Times become 24-hour: "3 pm", "3:00pm", "15:00" and "15.00" are all "15"; "10am" = "10:00" = "10"
+  // (but not "2 ambulances")
+  t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (_m, h, mm, ap) => {
+    const hour = (Number(h) % 12) + (ap[0] === 'p' ? 12 : 0)
+    return `${hour}:${mm ?? '00'}`
+  })
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
   t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')

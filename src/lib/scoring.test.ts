@@ -126,7 +126,7 @@ describe('real-test answer forms', () => {
 describe('audit round 2 answer forms', () => {
   it('am/pm only as a whole word', () => {
     expect(isCompletionCorrect('two ambulances', ['2 ambulances'])).toBe(true)
-    expect(normalizeAnswer('10am')).toBe('10 am')
+    expect(normalizeAnswer('10am')).toBe('10')
   })
   it('millions with several commas', () => {
     expect(isCompletionCorrect('3,000,000', ['3000000'])).toBe(true)
@@ -217,6 +217,11 @@ describe('round-4 scoring', () => {
     expect(normalizeAnswer('£75.00')).toBe(normalizeAnswer('75'))
     expect(normalizeAnswer('3.5')).toBe(normalizeAnswer('3.50'))
     expect(normalizeAnswer('10.00 am')).toBe(normalizeAnswer('10am'))
+    expect(isCompletionCorrect('15:00', ['15.00'])).toBe(true)
+    expect(isCompletionCorrect('15.30', ['15:30'])).toBe(true)
+    expect(isCompletionCorrect('3.30 pm', ['15:30'])).toBe(true)
+    expect(isCompletionCorrect('12 pm', ['12:00'])).toBe(true)
+    expect(isCompletionCorrect('12.30 pm', ['12:30'])).toBe(true)
     expect(normalizeAnswer('13.50')).toBe('13.5') // a price, not a time
   })
 })

@@ -64,10 +64,10 @@ body {
    The palette is remapped instead of adding dark: variants everywhere, so every page flips consistently.
    slate-800/900 stay dark because they are used as dark button/pill backgrounds. */
 /* Light mode: these text shades were under 4.5:1 on white — one step darker */
-:root:not(.dark) .text-slate-400:not(.exam *) { color: #64748b }
-:root:not(.dark) .text-emerald-600:not(.exam *) { color: #047857 }
-:root:not(.dark) .text-rose-500:not(.exam *) { color: #e11d48 }
-:root:not(.dark) .text-amber-600:not(.exam *) { color: #b45309 }
+:root:not(.dark) .text-slate-400:not(.exam *):not(:hover) { color: #64748b }
+:root:not(.dark) .text-emerald-600:not(.exam *):not(:hover) { color: #047857 }
+:root:not(.dark) .text-rose-500:not(.exam *):not(:hover) { color: #e11d48 }
+:root:not(.dark) .text-amber-600:not(.exam *):not(:hover) { color: #b45309 }
 /* Band numbers as text on cards (bandText): dark shades on light cards… */
 :root { --band-none: #64748b; --band-8: #047857; --band-7: #4f46e5; --band-6: #0369a1; --band-5: #b45309; --band-low: #be123c }
 .dark {

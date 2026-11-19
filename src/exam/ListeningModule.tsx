@@ -193,7 +193,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
 
   // Remember when the candidate left mid-recording (Exit, refresh, closing the tab) — a full mock skips that time on return.
   useEffect(() => {
-    const left = () => { if (abortRef.current) patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, leftAt: Date.now() } } })) }
+    const left = (e?: PageTransitionEvent) => { if (!e?.persisted && abortRef.current) patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, leftAt: Date.now() } } })) }
     window.addEventListener('pagehide', left)
     return () => { window.removeEventListener('pagehide', left); left(); abortRef.current?.abort(); stopSpeaking() }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
