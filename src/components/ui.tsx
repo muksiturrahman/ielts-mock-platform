@@ -1,5 +1,6 @@
 import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'motion/react'
 import { X } from 'lucide-react'
+import { setLeaveGuard } from '../lib/leaveGuard'
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
@@ -165,7 +166,14 @@ export function useUnsaved(dirty: boolean) {
     }
     window.addEventListener('beforeunload', warn)
     document.addEventListener('click', leave, true)
-    return () => { unsaved = false; window.removeEventListener('beforeunload', warn); document.removeEventListener('click', leave, true) }
+    // Browser Back/Forward: the guard puts this page's URL back; if the user confirms, release it and go back for real.
+    if (dirty) setLeaveGuard(() => { if (confirm('You have unsaved changes. Discard them?')) { setLeaveGuard(null); history.back() } })
+    return () => {
+      unsaved = false
+      window.removeEventListener('beforeunload', warn)
+      document.removeEventListener('click', leave, true)
+      if (dirty) setLeaveGuard(null)
+    }
   }, [dirty])
 }
 export const confirmDiscard = () => !unsaved || confirm('You have unsaved changes. Discard them?')

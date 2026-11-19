@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, Modal, PageHeader, Toggle, cx } from '../components/ui'
 import { availableModules, createAttempt, MODULE_LABEL, MODULE_MINUTES, moduleMinutes } from '../lib/attempts'
 import { useDB } from '../lib/store'
+import { recognitionSupported } from '../lib/speech'
 import type { ModuleKey, Test } from '../lib/types'
 
 export const MODULE_ICON: Record<ModuleKey, typeof Headphones> = { listening: Headphones, reading: BookOpen, writing: PenLine, speaking: Mic }
@@ -186,6 +187,11 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
         </div>
       )}
 
+      {!recognitionSupported() && (mode === 'full' || module === 'speaking') && (
+        <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          This browser can't transcribe speech, so Speaking can be recorded but not marked. Use <b>Chrome</b> or <b>Edge</b> for the Speaking test.
+        </p>
+      )}
       {!hasKey && (mode === 'full' || module === 'writing' || module === 'speaking') && (
         <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
           No AI key yet: {mode === 'full' ? 'Writing and Speaking' : MODULE_LABEL[module]} won't get a band{mode === 'full' ? ', so there is no overall band' : ''} until you <Link to="/settings" className="font-semibold underline">add a free key in Settings</Link>. You can still take the test and mark it later.

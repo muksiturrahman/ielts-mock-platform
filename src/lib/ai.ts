@@ -153,7 +153,9 @@ async function resolveModel(provider: AIProvider, key: string): Promise<string> 
 
 // ---------- structured calls ----------
 /** One evaluation request; always returns parsed JSON matching `schema`. */
-async function callStructured<T>(system: string, user: string, schema: object, maxTokens = 16000): Promise<T> {
+async function callStructured<T>(rubric: string, user: string, schema: object, maxTokens = 16000): Promise<T> {
+  // Always appended, so a custom rubric written for half bands still gets whole criterion bands.
+  const system = `${rubric}\n\nGive every criterion a WHOLE band from 0 to 9 (no half bands per criterion).`
   const s = getDB().settings
   const provider = s.provider
   const key = activeKey()

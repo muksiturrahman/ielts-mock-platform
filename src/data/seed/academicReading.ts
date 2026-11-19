@@ -361,11 +361,11 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             prompt: 'What point does the writer make in the first paragraph?',
             options: [
               { key: 'A', text: 'Numerical targets were introduced too quickly.' },
-              { key: 'B', text: 'Measurement can serve a useful purpose.' },
-              { key: 'C', text: 'Taxpayers are suspicious of performance figures.' },
+              { key: 'B', text: 'Taxpayers are suspicious of performance figures.' },
+              { key: 'C', text: 'Measurement can serve a useful purpose.' },
               { key: 'D', text: 'Public services cannot be compared fairly.' },
             ],
-            answer: ['B'],
+            answer: ['C'],
             explanation:
               'Paragraph 1: "I am not arguing that measurement is worthless. A health service that had no idea how long its patients waited would be failing in a basic duty."',
           },
@@ -374,12 +374,12 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             number: 28,
             prompt: 'The writer mentions patients waiting in ambulances in order to show',
             options: [
-              { key: 'A', text: 'that hospitals did not have enough emergency staff.' },
-              { key: 'B', text: 'how a target could be met without the service improving.' },
+              { key: 'A', text: 'how a target could be met without the service improving.' },
+              { key: 'B', text: 'that hospitals did not have enough emergency staff.' },
               { key: 'C', text: 'why waiting times are difficult to measure accurately.' },
               { key: 'D', text: 'that ambulance services were also given targets.' },
             ],
-            answer: ['B'],
+            answer: ['A'],
             explanation:
               'Paragraph 2: the clock "did not start until they passed through the door. The figures improved; the patients\' experience did not."',
           },
@@ -390,13 +390,13 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
               'According to the writer, why is the neglect of some pupils more damaging than gaming?',
             options: [
               { key: 'A', text: 'It affects a larger number of schools.' },
-              { key: 'B', text: 'It is less likely to be noticed.' },
+              { key: 'B', text: 'It breaks official rules.' },
               { key: 'C', text: 'It is deliberately hidden by teachers.' },
-              { key: 'D', text: 'It breaks official rules.' },
+              { key: 'D', text: 'It is less likely to be noticed.' },
             ],
-            answer: ['B'],
+            answer: ['D'],
             explanation:
-              'Paragraph 3: "Far more damaging, because it is harder to detect, is the way in which targets draw attention away from everything that is not counted." D is contradicted by "No rule has been broken".',
+              'Paragraph 3: "Far more damaging, because it is harder to detect, is the way in which targets draw attention away from everything that is not counted." B is contradicted by "No rule has been broken".',
           },
           {
             id: 'ar-q30',
@@ -470,20 +470,20 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
         instructions:
           'Complete each sentence with the correct ending, A–G, below. Write the correct letter, A–G.',
         options: [
-          { key: 'A', text: 'it tends to become less useful as a source of information.' },
-          { key: 'B', text: 'may favour pupils who are close to a key grade.' },
-          { key: 'C', text: 'can reduce the time professionals spend on their main responsibilities.' },
-          { key: 'D', text: 'may weaken the commitment that led people to choose their careers.' },
-          { key: 'E', text: 'they have come to rely on the comfort of simple rankings.' },
-          { key: 'F', text: 'it gives taxpayers a clearer picture of public spending.' },
-          { key: 'G', text: 'will eventually make inspections unnecessary.' },
+          { key: 'A', text: 'can reduce the time professionals spend on their main responsibilities.' },
+          { key: 'B', text: 'it gives taxpayers a clearer picture of public spending.' },
+          { key: 'C', text: 'it tends to become less useful as a source of information.' },
+          { key: 'D', text: 'they have come to rely on the comfort of simple rankings.' },
+          { key: 'E', text: 'will eventually make inspections unnecessary.' },
+          { key: 'F', text: 'may favour pupils who are close to a key grade.' },
+          { key: 'G', text: 'may weaken the commitment that led people to choose their careers.' },
         ],
         questions: [
           {
             id: 'ar-q36',
             number: 36,
             prompt: 'When a measure is turned into a target,',
-            answer: ['A'],
+            answer: ['C'],
             explanation:
               'Paragraph 2: "once a measure is made into a target, it tends to lose its value as a measure."',
           },
@@ -491,7 +491,7 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             id: 'ar-q37',
             number: 37,
             prompt: 'A school judged on the percentage of pupils reaching a particular grade',
-            answer: ['B'],
+            answer: ['F'],
             explanation:
               'Paragraph 3: teachers have "a powerful incentive to concentrate their efforts on pupils just below that grade".',
           },
@@ -499,7 +499,7 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             id: 'ar-q38',
             number: 38,
             prompt: 'Adding more indicators to a performance system',
-            answer: ['C'],
+            answer: ['A'],
             explanation:
               'Paragraph 4: the recording burden meant nurses spent "close to a third of their working hours on documentation — time that was not ... spent with patients."',
           },
@@ -507,7 +507,7 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             id: 'ar-q39',
             number: 39,
             prompt: 'Assuming that professionals will work well only if they are rewarded',
-            answer: ['D'],
+            answer: ['G'],
             explanation:
               'Paragraph 5: such a system "risks undermining the very motivation it takes for granted" — the "sense of vocation" that led people into the job.',
           },
@@ -515,7 +515,7 @@ Ultimately, what the public wants is good schools and hospitals, not good statis
             id: 'ar-q40',
             number: 40,
             prompt: "Politicians may be unwilling to accept the writer's proposals because",
-            answer: ['E'],
+            answer: ['D'],
             explanation:
               'Final paragraph: politicians "have come to depend on the reassurance that a simple ranking provides".',
           },

@@ -42,7 +42,7 @@ async function playPart(
     /** The audio was paused by something outside the test (headphones unplugged, a call): show a Resume button. */
     onPausedChange: (paused: boolean) => void
   },
-) {
+): Promise<number> {
   const url = section.audio ? await resolveMediaUrl(section.audio).catch(() => undefined) : undefined
   let heardShare = 0
   if (url) {
@@ -52,7 +52,12 @@ async function playPart(
     try {
       el.src = url
       el.volume = opts.getVolume()
-      if (opts.resumeAt?.audioPos) el.currentTime = opts.resumeAt.audioPos
+      if (opts.resumeAt?.audioPos) {
+        await new Promise<void>(r => (el.readyState >= 1 ? r() : (el.addEventListener('loadedmetadata', () => r(), { once: true }), el.addEventListener('error', () => r(), { once: true }))))
+        // Away for longer than the rest of this recording: it has already finished — the rest carries to the next part.
+        if (Number.isFinite(el.duration) && opts.resumeAt.audioPos >= el.duration) return opts.resumeAt.audioPos - el.duration
+        el.currentTime = opts.resumeAt.audioPos
+      }
       await new Promise<void>((resolve, reject) => {
         let last = Date.now()
         let lastPos = el.currentTime
@@ -77,14 +82,14 @@ async function playPart(
         }, 2000)
         el.play().catch(reject) // corrupt file, or the browser blocked playback
       })
-      return
+      return 0
     } catch {
       el.onpause = null
       // How far the recording got: the script carries on from about there instead of replaying the part.
       if (el.duration > 0 && el.currentTime / el.duration > 0.02) heardShare = el.currentTime / el.duration
       el.pause()
       opts.onPausedChange(false)
-      if (opts.signal.aborted) return
+      if (opts.signal.aborted) return 0
     } finally {
       clearInterval(stallTimer)
       if (onVisible) document.removeEventListener('visibilitychange', onVisible)
@@ -95,8 +100,9 @@ async function playPart(
   if (section.audio) opts.onProgress({ audioPos: undefined }) // from here on the script is the position to resume
   const from = opts.resumeAt?.scriptLine ?? (heardShare ? Math.floor(lines.length * heardShare) : undefined)
   if (from === undefined) await opts.preview()
-  if (opts.signal.aborted) return
+  if (opts.signal.aborted) return 0
   await playScript(lines, { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
+  return 0
 }
 
 export default function ListeningModule({ test, attempt, onSubmit, setAnswer, toggleFlag, exitButton }: ModuleProps) {
@@ -150,25 +156,28 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     if (ttsSupported()) speechSynthesis.speak(new SpeechSynthesisUtterance('')) // and speech, for announcements / the script fallback
     const saved = attempt.progress.listening
     setPlaying(from)
+    // Full mock: the real recording never stops. Time spent away is skipped, as if it had kept playing —
+    // carried on into the following parts if the absence was longer than the rest of this one.
+    let carry = attempt.mode === 'full' && saved.leftAt && saved.section === from ? (Date.now() - saved.leftAt) / 1000 : 0
+    const skipScript = (i: number, startLine: number) => {
+      const lines = parseScript(sections[i].transcript)
+      let line = startLine
+      while (line < lines.length && carry > 0) { carry -= lines[line].text.length / (14 * rate) + 0.5; line++ } // ~14 chars/s spoken
+      if (line < lines.length) carry = 0
+      return line
+    }
     for (let i = from; i < sections.length; i++) {
       if (ctrl.signal.aborted) return
-      let resumeAt = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
-      // Full mock: the real recording never stops. Time spent away is skipped, as if it had kept playing.
-      // shortcut: the skip stops at the end of the current part; a longer absence just ends that part.
-      if (resumeAt && attempt.mode === 'full' && saved.leftAt) {
-        let away = (Date.now() - saved.leftAt) / 1000
-        if (resumeAt.audioPos !== undefined) resumeAt = { ...resumeAt, audioPos: resumeAt.audioPos + away }
-        else {
-          const lines = parseScript(sections[i].transcript)
-          let line = resumeAt.scriptLine ?? 0
-          while (line < lines.length && away > 0) { away -= lines[line].text.length / (14 * rate) + 0.5; line++ } // ~14 chars/s spoken
-          resumeAt = { ...resumeAt, scriptLine: line }
-        }
+      let resumeAt: { audioPos?: number; scriptLine?: number } | undefined = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
+      if (carry > 0) {
+        if (i !== from) carry = Math.max(0, carry - PREVIEW_SEC - 3) // the part's own preview and announcement went by too
+        if (sections[i].audio) { resumeAt = { audioPos: (resumeAt?.audioPos ?? 0) + carry }; carry = 0 }
+        else if (carry > 0) resumeAt = { scriptLine: skipScript(i, resumeAt?.scriptLine ?? 0) }
       }
       patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, leftAt: undefined, ...(resumeAt ? {} : { audioPos: undefined, scriptLine: undefined }) } } }))
       setPlaying(i)
       setView(i)
-      await playPart(sections[i], {
+      carry += await playPart(sections[i], {
         rate, getVolume: () => volumeRef.current, signal: ctrl.signal, audioEl: el, resumeAt,
         onProgress: p => patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, ...p } } })),
         onPausedChange: setAudioPaused,
@@ -180,7 +189,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
           'error',
         ),
       })
-      if (i < sections.length - 1 && !ctrl.signal.aborted) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
+      if (i < sections.length - 1 && !ctrl.signal.aborted && !carry) await speak(`That is the end of ${sections[i].title}.`, { rate, volume: volumeRef.current })
     }
     if (ctrl.signal.aborted) return
     abortRef.current = null // finished: practice Replay may start a new run

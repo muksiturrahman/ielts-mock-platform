@@ -154,7 +154,8 @@ export function normalizeAnswer(s: string): string {
   // "10:30" and "10.30" (times) or "3.50" (prices) all written one way, so either style matches; "09.30" = "9.30"
   t = t.replace(/(\d):(\d{2})\b/g, '$1.$2').replace(/\b0(\d)\.(\d{2})\b/g, '$1.$2')
   // "£75.00" = "75", "3.50" = "3.5", "10.00 am" = "10 am" — the same on both sides, so styles never matter
-  t = t.replace(/(\d)\.0+\b/g, '$1').replace(/(\d\.\d*[1-9])0+\b/g, '$1')
+  t = t.replace(/(\d)\.0+\b(?!\.\d)/g, '$1').replace(/(\d\.\d*[1-9])0+\b(?!\.\d)/g, '$1') // not inside "3.0.1"
+  t = t.replace(/\bthe\s+(\d{1,2})(?=\s|$)/g, '$1') // "the 1st" (ordinal) = "1st"
   t = t.replace(/[“”"'‘’`]/g, '').replace(/[.,;!?]+$/g, '').replace(/[.,;!?](\s|$)/g, '$1')
   t = t.replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
   return t.split(' ').map(normWord).join(' ')

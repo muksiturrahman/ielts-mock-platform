@@ -223,5 +223,7 @@ describe('round-4 scoring', () => {
     expect(isCompletionCorrect('12 pm', ['12:00'])).toBe(true)
     expect(isCompletionCorrect('12.30 pm', ['12:30'])).toBe(true)
     expect(normalizeAnswer('13.50')).toBe('13.5') // a price, not a time
+    expect(normalizeAnswer('3.0.1')).toBe('3.0.1') // a version number keeps its zeros
+    expect(normalizeAnswer('the 1st')).toBe(normalizeAnswer('1st'))
   })
 })
