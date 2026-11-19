@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { BookOpenCheck, ClipboardCheck, History, LayoutDashboard, Menu, Monitor, Moon, NotebookPen, Settings as SettingsIcon, ShieldCheck, Sparkles, Sun, X } from 'lucide-react'
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { Component, Fragment, useEffect, useState, type ReactNode } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Button, ToastProvider, cx, useDialogFocus, useToast } from './components/ui'
 import { setSettings, useDB } from './lib/store'
@@ -22,8 +22,8 @@ const NAV = [
   { to: '/tests', label: 'Mock tests', icon: BookOpenCheck },
   { to: '/history', label: 'My results', icon: History },
   { to: '/mistakes', label: 'Mistakes', icon: NotebookPen },
-  { to: '/examiner', label: 'Examiner', icon: ClipboardCheck },
-  { to: '/admin', label: 'Admin', icon: ShieldCheck },
+  { to: '/examiner', label: 'Examiner', icon: ClipboardCheck, teacher: true },
+  { to: '/admin', label: 'Admin', icon: ShieldCheck, teacher: true },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ]
 
@@ -48,8 +48,11 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col gap-6 p-5">
       <Logo />
       <nav className="flex flex-col gap-1">
-        {NAV.map(n => (
-          <NavLink key={n.to} to={n.to} end={n.end} onClick={onNavigate}
+        {NAV.map((n, i) => (
+          <Fragment key={n.to}>
+          {'teacher' in n && !('teacher' in NAV[i - 1]) && <div className="mt-3 px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">For teachers</div>}
+          {!('teacher' in n) && i > 0 && 'teacher' in NAV[i - 1] && <div className="mt-2" />}
+          <NavLink to={n.to} end={n.end} onClick={onNavigate}
             className={({ isActive }) => cx('relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors', isActive ? 'text-brand-700' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800')}>
             {({ isActive }) => (
               <>
@@ -59,6 +62,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               </>
             )}
           </NavLink>
+          </Fragment>
         ))}
       </nav>
       <div className="mt-auto space-y-3">

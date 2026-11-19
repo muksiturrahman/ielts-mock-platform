@@ -61,14 +61,13 @@ export function CountUp({ value, decimals = 1, duration = 1.2 }: { value: number
   return <motion.span>{text}</motion.span>
 }
 
+const bandLevel = (band?: number) => (band === undefined ? 'none' : band >= 8 ? '8' : band >= 7 ? '7' : band >= 6 ? '6' : band >= 5 ? '5' : 'low')
+/** Band colour for fills behind white text and for ring strokes: dark enough for white text (≥4.5:1) in both themes. */
 export function bandColor(band?: number) {
-  if (band === undefined) return '#cbd5e1'
-  if (band >= 8) return '#10b981'
-  if (band >= 7) return '#6366f1'
-  if (band >= 6) return '#0ea5e9'
-  if (band >= 5) return '#f59e0b'
-  return '#f43f5e'
+  return { none: '#64748b', '8': '#047857', '7': '#4f46e5', '6': '#0369a1', '5': '#b45309', low: '#e11d48' }[bandLevel(band)]
 }
+/** Band colour for text on cards: dark shades on light cards, light shades on dark cards (see --band-* in index.css). */
+export const bandText = (band?: number) => `var(--band-${bandLevel(band)})`
 
 export function BandRing({ band, size = 120, label, stroke = 10 }: { band?: number; size?: number; label?: string; stroke?: number }) {
   const r = (size - stroke) / 2

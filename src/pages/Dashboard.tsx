@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { ArrowRight, Award, BarChart3, Flame, Target, TrendingUp, TriangleAlert, Zap, RotateCcw } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CartesianGrid, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BandRing, Button, Card, CountUp, Empty, bandColor, fmtBand, fmtDate } from '../components/ui'
+import { BandRing, Button, Card, CountUp, Empty, bandColor, fmtBand, fmtDate, bandText } from '../components/ui'
 import { practiceTarget, progressSeries, skillAverages, weaknesses, type Weakness } from '../lib/analytics'
 import { reviewItems } from '../lib/review'
 import { createAttempt } from '../lib/attempts'
@@ -17,6 +17,7 @@ const LINE_COLORS: Record<string, string> = { listening: '#0ea5e9', reading: '#1
 export default function Dashboard() {
   const attempts = useDB(d => d.attempts)
   const profile = useDB(d => d.profile)
+  const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
   const navigate = useNavigate()
   const done = attempts.filter(a => a.status === 'completed')
   const inProgress = attempts.filter(a => a.status === 'in_progress').sort((a, b) => b.startedAt - a.startedAt)
@@ -65,7 +66,7 @@ export default function Dashboard() {
             <p className="mt-2 text-white/80">
               {latest
                 ? `Target: band ${fmtBand(profile.targetBand)}. ${latest >= profile.targetBand ? 'You are at or above target — keep it consistent.' : `${(profile.targetBand - latest).toFixed(1)} band to go.`}`
-                : 'Sit a full computer-delivered mock or practise one skill at a time. Writing and Speaking are marked by AI against the official criteria.'}
+                : `Sit a full computer-delivered mock or practise one skill at a time. ${hasKey ? 'Writing and Speaking are marked by AI against the official criteria.' : 'Add a free AI key in Settings to get Writing and Speaking marked.'}`}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Button variant="secondary" onClick={() => navigate('/tests')} className="border-0">
@@ -107,7 +108,7 @@ export default function Dashboard() {
             <Card key={m} delay={0.1 + i * 0.05} className="p-5">
               <div className="flex items-center justify-between">
                 <span className={`rounded-xl bg-gradient-to-br p-2 text-white ${MODULE_TONE[m]}`}><Icon size={18} /></span>
-                <span className="font-display text-2xl font-extrabold" style={{ color: bandColor(b) }}>{b === undefined ? '–' : <CountUp value={b} />}</span>
+                <span className="font-display text-2xl font-extrabold" style={{ color: bandText(b) }}>{b === undefined ? '–' : <CountUp value={b} />}</span>
               </div>
               <div className="mt-3 font-semibold text-slate-800">{MODULE_LABEL[m]}</div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">

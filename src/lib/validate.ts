@@ -86,7 +86,11 @@ export function chartIssue(c: unknown): string | undefined {
   const x = c as { kind?: unknown; categories?: unknown; series?: unknown }
   if (!x || typeof x !== 'object' || !['bar', 'line', 'pie', 'table'].includes(String(x.kind))) return 'chart type must be bar, line, pie or table'
   if (!Array.isArray(x.categories) || !x.categories.length) return 'chart has no categories'
+  if (!x.categories.every(k => typeof k === 'string' || typeof k === 'number')) return 'chart categories must be text or numbers'
   if (!Array.isArray(x.series) || !x.series.length) return 'chart has no data series'
+  const names = x.series.map((s: { name?: unknown }) => s?.name)
+  // Series names become data keys: duplicates overwrite each other and "name" overwrites the category labels.
+  if (!names.every(n => typeof n === 'string' && n.trim() && n !== 'name') || new Set(names).size !== names.length) return 'every chart series needs a different, non-empty name (not "name")'
   const n = x.categories.length
   if (!x.series.every(s => s && Array.isArray(s.values) && s.values.length === n && s.values.every((v: unknown) => v === null || typeof v === 'number'))) return `every chart series needs ${n} values (numbers, or null for missing data)`
   return undefined

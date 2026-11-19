@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { ClipboardCheck, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Badge, Button, Card, Empty, PageHeader, bandColor, confirmDiscard, cx, fmtBand, fmtDate, useToast, useUnsaved } from '../components/ui'
+import { Badge, Button, Card, Empty, PageHeader, confirmDiscard, cx, fmtBand, fmtDate, useToast, useUnsaved, bandText } from '../components/ui'
 import { moduleBands, writingTaskBand } from '../lib/attempts'
 import { countWords } from '../lib/scoring'
 import { patchAttempt, useDB } from '../lib/store'
@@ -74,7 +74,7 @@ function ReviewPanel({ attempt }: { attempt: Attempt }) {
         {(['writing', 'speaking'] as const).filter(m => attempt.results[m]).map(m => (
           <div key={m} className="text-center">
             <div className="text-xs font-semibold uppercase text-slate-400">{m}</div>
-            <div className="font-display text-3xl font-extrabold" style={{ color: bandColor(bands[m]) }}>{fmtBand(bands[m])}</div>
+            <div className="font-display text-3xl font-extrabold" style={{ color: bandText(bands[m]) }}>{fmtBand(bands[m])}</div>
           </div>
         ))}
       </Card>

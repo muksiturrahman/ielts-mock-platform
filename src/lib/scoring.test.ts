@@ -78,7 +78,9 @@ describe('answer matching', () => {
     expect(isCompletionCorrect('', ['x'], g)).toBe(false)
     // a date is one number, with or without "of" (the seed Listening Q3 says "the 15th of March")
     expect(isCompletionCorrect('15th of March', ['15 March'], { maxWords: 1, allowNumber: true })).toBe(true)
-    expect(isCompletionCorrect('the 15th of March', ['15 March'], { maxWords: 1, allowNumber: true })).toBe(false)
+    // "the" + a date fits ONE WORD AND/OR A NUMBER, and "the" before a date is ignored when matching
+    expect(isCompletionCorrect('the 15th of March', ['15 March'], { maxWords: 1, allowNumber: true })).toBe(true)
+    expect(isCompletionCorrect('the 15th of March', ['15 March'], { maxWords: 1, allowNumber: false })).toBe(false)
   })
 })
 
@@ -117,14 +119,14 @@ describe('real-test answer forms', () => {
   it('word-level slash alternatives', () => {
     expect(expandAccepted('bus/coach station')).toEqual(['bus station', 'coach station'])
     expect(isCompletionCorrect('coach station', ['bus/coach station'])).toBe(true)
-    expect(expandAccepted('10 am / 10:00')).toContain('10.00')
+    expect(expandAccepted('10 am / 10:00')).toContain('10') // ':00' / '.00' dropped on both sides
   })
 })
 
 describe('audit round 2 answer forms', () => {
   it('am/pm only as a whole word', () => {
     expect(isCompletionCorrect('two ambulances', ['2 ambulances'])).toBe(true)
-    expect(normalizeAnswer('10am')).toBe('10.00 am')
+    expect(normalizeAnswer('10am')).toBe('10 am')
   })
   it('millions with several commas', () => {
     expect(isCompletionCorrect('3,000,000', ['3000000'])).toBe(true)
@@ -192,5 +194,29 @@ describe('round-3 re-audit word limits', () => {
     expect(isCompletionCorrect('25 per cent', ['25%'], one)).toBe(true)
     expect(isCompletionCorrect('25%', ['25%'], one)).toBe(true)
     expect(isCompletionCorrect('1st floor', ['first floor'], one)).toBe(true)
+  })
+})
+
+describe('round-4 scoring', () => {
+  const one = { maxWords: 1, allowNumber: true }
+  it('postcodes and flat numbers are one number', () => {
+    expect(isCompletionCorrect('BR7 4QT', ['BR7 4QT'], one)).toBe(true)
+    expect(isCompletionCorrect('flat 3B', ['flat 3B'], one)).toBe(true)
+  })
+  it('more spellings, incl. derived forms', () => {
+    expect(normalizeAnswer('flavour')).toBe(normalizeAnswer('flavor'))
+    expect(normalizeAnswer('colourful')).toBe(normalizeAnswer('colorful'))
+    expect(normalizeAnswer('labourers')).toBe(normalizeAnswer('laborers'))
+    expect(normalizeAnswer('offence')).toBe(normalizeAnswer('offense'))
+    expect(normalizeAnswer('four')).toBe('4') // -our words outside the list are untouched
+  })
+  it('dates, times and decimals written different ways', () => {
+    expect(isCompletionCorrect('March the 15th', ['15 March'], one)).toBe(true)
+    expect(isCompletionCorrect('the 15th of March', ['15 March'], { maxWords: 2, allowNumber: true })).toBe(true)
+    expect(normalizeAnswer('15:00')).toBe(normalizeAnswer('3 pm'))
+    expect(normalizeAnswer('£75.00')).toBe(normalizeAnswer('75'))
+    expect(normalizeAnswer('3.5')).toBe(normalizeAnswer('3.50'))
+    expect(normalizeAnswer('10.00 am')).toBe(normalizeAnswer('10am'))
+    expect(normalizeAnswer('13.50')).toBe('13.5') // a price, not a time
   })
 })

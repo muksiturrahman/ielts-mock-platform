@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { BookOpen, GraduationCap, Headphones, Mic, PenLine, Play, Search, Timer } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, Modal, PageHeader, Toggle, cx } from '../components/ui'
 import { availableModules, createAttempt, MODULE_LABEL, MODULE_MINUTES, moduleMinutes } from '../lib/attempts'
 import { useDB } from '../lib/store'
@@ -17,6 +17,7 @@ export default function Tests() {
   const [filter, setFilter] = useState<'all' | 'academic' | 'general'>('all')
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState<Test>()
+  const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
   const shown = useMemo(
     () => tests
       .filter(t => (filter === 'all' || t.variant === filter) && t.title.toLowerCase().includes(q.toLowerCase()))
@@ -48,12 +49,17 @@ export default function Tests() {
           <b className="text-slate-900">New here? Start with a Full mock exam.</b> It's the complete test in the real order and timing:
           Listening, Reading, Writing, then Speaking — about {fmtDuration(Object.values(MODULE_MINUTES).reduce((a, b) => a + b, 0))}.
           Choose <b>Academic</b> if you're taking IELTS for university study, or <b>General Training</b> for work or migration.
-          <span className="text-slate-500"> Practice cards are short drills for one task.</span>
+          <span className="text-slate-500"> Or use Practice to drill one part at a time.</span>
+          {!hasKey && (
+            <span className="mt-1.5 block font-medium text-amber-700">
+              Writing and Speaking need a free AI key to be marked — <Link to="/settings" className="underline">add one in Settings</Link> (takes 2 minutes). Listening and Reading are marked without it.
+            </span>
+          )}
         </div>
       </div>
 
       {shown.length === 0 ? (
-        <Empty icon={<BookOpen />} title="No tests found">Publish a test in Admin or change the filter.</Empty>
+        <Empty icon={<BookOpen />} title="No tests found">Try another search or filter.</Empty>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((t, i) => <TestCard key={t.id} test={t} index={i} onStart={() => setPicked(t)} />)}
@@ -102,6 +108,7 @@ function TestCard({ test, index, onStart }: { test: Test; index: number; onStart
 
 function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
   const navigate = useNavigate()
+  const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
   const mods = availableModules(test)
   const [mode, setMode] = useState<'full' | 'practice'>(mods.length === 4 ? 'full' : 'practice')
   const [module, setModule] = useState<ModuleKey>(mods[0])
@@ -179,8 +186,13 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
         </div>
       )}
 
+      {!hasKey && (mode === 'full' || module === 'writing' || module === 'speaking') && (
+        <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          No AI key yet: {mode === 'full' ? 'Writing and Speaking' : MODULE_LABEL[module]} won't get a band{mode === 'full' ? ', so there is no overall band' : ''} until you <Link to="/settings" className="font-semibold underline">add a free key in Settings</Link>. You can still take the test and mark it later.
+        </p>
+      )}
       <div className="mt-6 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm text-slate-500"><Timer size={15} /> {mode === 'practice' && !timed ? 'Untimed' : `~${totalMin} min`}</span>
+        <span className="flex items-center gap-1.5 text-sm text-slate-500"><Timer size={15} /> {mode === 'practice' && !timed ? 'Untimed' : `about ${fmtDuration(totalMin)}`}</span>
         <Button size="lg" onClick={start}><Play size={18} /> Begin</Button>
       </div>
     </Modal>

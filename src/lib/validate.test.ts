@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isCompletionCorrect } from './scoring'
-import { isTestShape, testIssues } from './validate'
+import { chartIssue, isTestShape, testIssues } from './validate'
 import type { Test } from './types'
 
 // The seed module pulls in the store, which touches browser globals at import time.
@@ -72,5 +72,15 @@ describe('round-3 publish checks', () => {
     const t = { ...base, writing: { tasks: [{ id: 'w', number: 1 as const, prompt: 'Describe', minWords: 150, chart: { kind: 'bar', title: 'x', categories: ['a', 'b'], series: [{ name: 's' }] } }] } }
     expect(testIssues(t as never).blocking.join()).toMatch(/needs 2 values/)
     expect(isTestShape(t)).toBe(false)
+  })
+})
+
+describe('round-4 chart checks', () => {
+  it('rejects duplicate or reserved series names and odd categories', () => {
+    const chart = (series: unknown, categories: unknown = ['a', 'b']) => ({ kind: 'bar', title: 't', categories, series })
+    expect(chartIssue(chart([{ name: 'x', values: [1, 2] }, { name: 'x', values: [3, 4] }]))).toMatch(/different/)
+    expect(chartIssue(chart([{ name: 'name', values: [1, 2] }]))).toMatch(/different/)
+    expect(chartIssue(chart([{ name: 'x', values: [1, 2] }], [{}, 'b']))).toMatch(/categories/)
+    expect(chartIssue(chart([{ name: 'x', values: [1, null] }]))).toBeUndefined()
   })
 })

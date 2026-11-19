@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { AlertCircle, ArrowLeft, CheckCircle2, Download, KeyRound, Loader2, Play, RefreshCw, Sparkles, XCircle } from 'lucide-react'
 import { Fragment, useEffect, useId, useState, type ReactNode } from 'react'
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { ExamReview } from '../components/ExamReview'
 import { questionText, locateQuestion } from '../lib/review'
-import { Badge, BandRing, Button, Card, bandColor, cx, fmtBand, fmtDate } from '../components/ui'
+import { Badge, BandRing, Button, Card, bandColor, cx, fmtBand, fmtDate, bandText } from '../components/ui'
 import { countWords } from '../lib/scoring'
 import { attemptOverall, markSpeaking, markWriting, MODULE_LABEL, moduleBands, writingTaskBand, writingTasksTaken } from '../lib/attempts'
 import { resolveMediaUrl } from '../lib/media'
@@ -46,7 +46,12 @@ export default function Results() {
             <p className="text-white/70">{fmtDate(attempt.startedAt)} {attempt.status === 'in_progress' && '· in progress'}</p>
           </div>
           {attempt.mode === 'full' && (
-            <div className="rounded-3xl bg-white p-3"><BandRing band={overall} size={130} label="Overall band" /></div>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="rounded-3xl bg-white p-3"><BandRing band={overall} size={130} label="Overall band" /></div>
+              <span className="max-w-40 text-center text-xs text-white/80">
+                {overall !== undefined ? `CEFR ${cefr(overall)} · bands run 0–9` : 'Shown once all four parts are marked'}
+              </span>
+            </div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
@@ -106,7 +111,7 @@ function Overview({ attempt, bands, onOpen }: { attempt: Attempt; bands: Partial
         <Card key={m} delay={i * 0.05} className="p-6">
           <div className="mb-3 flex items-center justify-between">
             <span className="font-display text-lg font-bold">{MODULE_LABEL[m]}</span>
-            <span className="font-display text-2xl font-extrabold" style={{ color: bandColor(bands[m]) }}>{fmtBand(bands[m])}</span>
+            <span className="font-display text-2xl font-extrabold" style={{ color: bandText(bands[m]) }}>{fmtBand(bands[m])}</span>
           </div>
           {(m === 'listening' || m === 'reading') && attempt.results[m] && (
             <>
@@ -146,6 +151,7 @@ function Overview({ attempt, bands, onOpen }: { attempt: Attempt; bands: Partial
 }
 
 function MarkingState({ status, error, retry, children }: { status?: string; error?: string; retry: () => void; children: ReactNode }) {
+  const navigate = useNavigate()
   const hasKey = useDB(d => Boolean(d.settings.keys[d.settings.provider]?.trim()))
   if (status === 'marking') return <div className="space-y-2"><div className="skeleton h-4 w-3/4" /><div className="skeleton h-4 w-1/2" /><p className="flex items-center gap-1.5 text-sm text-brand-600"><Sparkles size={14} /> The AI examiner is marking against the band descriptors…</p></div>
   if (status === 'error' || status === 'pending') {
@@ -153,7 +159,7 @@ function MarkingState({ status, error, retry, children }: { status?: string; err
       <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
         <div className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />{status === 'error' ? error : 'Not marked yet.'}</div>
         <div className="mt-3 flex gap-2">
-          {!hasKey && <Link to="/settings"><Button size="sm" variant="secondary"><KeyRound size={14} /> Add API key</Button></Link>}
+          {!hasKey && <Button size="sm" variant="secondary" onClick={() => navigate('/settings')}><KeyRound size={14} /> Add API key</Button>}
           <Button size="sm" onClick={retry}><RefreshCw size={14} /> {status === 'error' ? 'Retry marking' : 'Mark now'}</Button>
         </div>
       </div>
@@ -343,7 +349,7 @@ function WritingTaskCard({ n, ev, text, prompt, override }: { n: 1 | 2; ev?: Wri
             <div key={k} className="rounded-xl border border-slate-100 p-4">
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-sm font-semibold">{label}</span>
-                <span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c?.band) }}>
+                <span className="font-display text-lg font-extrabold" style={{ color: bandText(ov ?? c?.band) }}>
                   {fmtBand(ov ?? c?.band)}{ov !== undefined && c && ov !== c.band && <span className="ml-1 text-xs font-medium text-slate-400 line-through">{fmtBand(c.band)}</span>}
                 </span>
               </div>
@@ -417,7 +423,7 @@ function SpeakingView({ attempt }: { attempt: Attempt }) {
                 const c = s?.criteria?.[k]
                 return (
                   <div key={k} className="rounded-xl border border-slate-100 p-4">
-                    <div className="mb-1 flex items-center justify-between"><span className="text-sm font-semibold">{label}</span><span className="font-display text-lg font-extrabold" style={{ color: bandColor(ov ?? c?.band) }}>{fmtBand(ov ?? c?.band)}</span></div>
+                    <div className="mb-1 flex items-center justify-between"><span className="text-sm font-semibold">{label}</span><span className="font-display text-lg font-extrabold" style={{ color: bandText(ov ?? c?.band) }}>{fmtBand(ov ?? c?.band)}</span></div>
                     {c && <p className="text-sm text-slate-600">{c.comment}</p>}
                   </div>
                 )
@@ -464,3 +470,6 @@ function PlayRecording({ id }: { id: string }) {
 export function DownloadTrf() {
   return <Button variant="dark" onClick={() => window.print()}><Download size={16} /> Download PDF</Button>
 }
+
+/** IELTS band → CEFR level (as published by IELTS). */
+const cefr = (b: number) => (b >= 8.5 ? 'C2' : b >= 7 ? 'C1' : b >= 5.5 ? 'B2' : b >= 4 ? 'B1' : 'A2')

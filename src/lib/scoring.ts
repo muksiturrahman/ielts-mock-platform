@@ -70,6 +70,10 @@ const ORDINALS: Record<string, number> = {
 const LL_STEMS = new Set('travel label model cancel fuel signal level counsel equal total channel tunnel dial panel quarrel marvel jewel'.split(' '))
 const SPELLING: Record<string, string> = {
   fibre: 'fiber', calibre: 'caliber', judgement: 'judgment', enrol: 'enroll', dialogue: 'dialog',
+  flavour: 'flavor', odour: 'odor', vapour: 'vapor', rumour: 'rumor', armour: 'armor', vigour: 'vigor', endeavour: 'endeavor',
+  savoury: 'savory', paediatrician: 'pediatrician', anaesthetic: 'anesthetic', archaeology: 'archeology', encyclopaedia: 'encyclopedia',
+  oesophagus: 'esophagus', offence: 'offense', fulfilment: 'fulfillment', skilful: 'skillful', ageing: 'aging', sulphur: 'sulfur',
+  yoghurt: 'yogurt', pyjamas: 'pajamas', spectre: 'specter', sombre: 'somber', lustre: 'luster', mum: 'mom',
   analogue: 'analog', sceptical: 'skeptical', manoeuvre: 'maneuver', paediatric: 'pediatric', oestrogen: 'estrogen',
   colour: 'color', favour: 'favor', favourite: 'favorite', centre: 'center', theatre: 'theater', metre: 'meter',
   litre: 'liter', programme: 'program', neighbour: 'neighbor', neighbourhood: 'neighborhood', harbour: 'harbor',
@@ -99,6 +103,11 @@ function normWord(w: string): string {
   if (NUMBER_WORDS[w]) return NUMBER_WORDS[w]
   if (SPELLING[w]) return SPELLING[w]
   if (w.endsWith('s') && SPELLING[w.slice(0, -1)]) return `${SPELLING[w.slice(0, -1)]}s` // colours, metres
+  // Derived forms of listed words: colourful, labourers, flavoured, neighbourly…
+  for (const suf of ['ful', 'fully', 'less', 'ers', 'er', 'ing', 'ed', 'ly', 'ian', 'ians', 'ite', 'ites', 'able', 'ism']) {
+    const stem = w.slice(0, -suf.length)
+    if (w.endsWith(suf) && stem.length > 2 && SPELLING[stem]) return SPELLING[stem] + suf
+  }
   const tre = w.match(/^(\w*(?:metre|litre))(s?)$/) // kilometre, centimetre, millilitre…
   if (tre) return `${tre[1].slice(0, -2)}er${tre[2]}`
   const ll = w.match(/^(\w+)ll(ed|ing|er|ers)$/) // travelled, labelling, modeller (UK doubles the l)
@@ -125,12 +134,15 @@ function numberWords(t: string, ordinals = true): string {
 
 export function normalizeAnswer(s: string): string {
   let t = numberWords(s.toLowerCase().trim().replace(/&/g, ' and '))
+  // 24-hour clock written with a colon ("15:00") = "3 pm" (not "15.00", which may be a price)
+  t = t.replace(/\b(1[3-9]|2[0-3]):(\d{2})\b(?!\s*[ap]\.?m)/g, (_m, h, mm) => `${Number(h) - 12}:${mm} pm`)
   // times: 10am, 10 am, 10.00 am, 10:00am → 10.00 am (but not "2 ambulances")
   t = t.replace(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)(?![a-z])/g, (_m, h, mm, ap) => `${Number(h)}:${mm ?? '00'} ${ap[0]}m`)
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
   t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')
   t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(?:the\\s+)?(\\d{1,2})\\b`, 'g'), '$2 $1') // "June (the) 1" → "1 june"
+  t = t.replace(new RegExp(`\\bthe\\s+(\\d{1,2} (?:${MONTH_RE}))\\b`, 'g'), '$1') // "the 15 march" = "15 march"
   // phone / long numbers written in groups: "07962 551 340" → "07962551340"
   t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   t = t.replace(/[£$€]/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')
@@ -139,6 +151,8 @@ export function normalizeAnswer(s: string): string {
   t = t.replace(/(\d)([a-z]{2,})\b/g, '$1 $2')
   // "10:30" and "10.30" (times) or "3.50" (prices) all written one way, so either style matches; "09.30" = "9.30"
   t = t.replace(/(\d):(\d{2})\b/g, '$1.$2').replace(/\b0(\d)\.(\d{2})\b/g, '$1.$2')
+  // "£75.00" = "75", "3.50" = "3.5", "10.00 am" = "10 am" — the same on both sides, so styles never matter
+  t = t.replace(/(\d)\.0+\b/g, '$1').replace(/(\d\.\d*[1-9])0+\b/g, '$1')
   t = t.replace(/[“”"'‘’`]/g, '').replace(/[.,;!?]+$/g, '').replace(/[.,;!?](\s|$)/g, '$1')
   t = t.replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
   return t.split(' ').map(normWord).join(' ')
@@ -175,12 +189,14 @@ function wordCount(s: string): { words: number; numbers: number } {
     .replace(new RegExp(`\\b(${MONTH_RE})\\s+(the\\s+)?${ord}\\b`, 'g'), '$1 1') // March (the) fifteenth
     .replace(/\bper\s+cent\b/g, 'percent'), false) // "per cent" is one word, like "%" 
     .replace(new RegExp(`\\b\\d{1,2}(st|nd|rd|th)?\\s+(of\\s+)?(${MONTH_RE})(,?\\s+\\d{4})?\\b`, 'g'), '0')
-    .replace(new RegExp(`\\b(${MONTH_RE})\\s+\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
+    .replace(new RegExp(`\\b(${MONTH_RE})\\s+(the\\s+)?\\d{1,2}(st|nd|rd|th)?(,?\\s+\\d{4})?\\b`, 'g'), '0')
     .replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   const parts = t.trim().split(/\s+/).filter(Boolean)
-  // "25%", "1st", "10am" are one number each
-  const numbers = parts.filter(p => /^[£$€]?\d[\d,.:/]*(%|st|nd|rd|th|am|pm)?$/i.test(p)).length
-  return { words: parts.length - numbers, numbers }
+  // A token with a digit is a number ("25%", "1st", "BR7", "3B"); a run of them is one ("BR7 4QT" postcode)
+  const isNum = (p: string) => /^[£$€]?\d[\d,.:/]*(%|st|nd|rd|th|am|pm)?$/i.test(p) || (/\d/.test(p) && /^[a-z0-9]+$/i.test(p))
+  const merged = parts.filter((p, i) => !(isNum(p) && i > 0 && isNum(parts[i - 1]) && /[a-z]/i.test(p + parts[i - 1])))
+  const numbers = merged.filter(isNum).length
+  return { words: merged.length - numbers, numbers }
 }
 
 export function isCompletionCorrect(given: string, accepted: string[], group?: Pick<QuestionGroup, 'maxWords' | 'allowNumber'>): boolean {

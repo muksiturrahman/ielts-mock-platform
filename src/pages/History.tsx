@@ -1,13 +1,14 @@
 import { motion } from 'motion/react'
 import { ArrowRight, History as HistoryIcon, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, PageHeader, cx, bandColor, fmtBand, fmtDate, useToast } from '../components/ui'
 import { attemptOverall, MODULE_LABEL, moduleBands } from '../lib/attempts'
 import { deleteMedia } from '../lib/media'
 import { deleteAttempt, useDB } from '../lib/store'
 
 export default function HistoryPage() {
+  const navigate = useNavigate()
   const all = useDB(d => [...d.attempts].sort((a, b) => b.startedAt - a.startedAt))
   const toast = useToast()
   const [mode, setMode] = useState<'all' | 'full' | 'practice'>('all')
@@ -30,12 +31,13 @@ export default function HistoryPage() {
         <div className="space-y-3">
           {attempts.map((a, i) => {
             const bands = moduleBands(a)
-            const o = attemptOverall(a)
+            // A one-module practice shows that module's band; a full mock or multi-module attempt waits for its overall.
+            const o = attemptOverall(a) ?? (a.mode !== 'full' && a.modules.length === 1 ? Object.values(bands)[0] : undefined)
             return (
               <motion.div key={a.id} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.04 }}
                 className="card flex flex-wrap items-center gap-4 p-4 transition hover:shadow-md">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-xl font-extrabold text-white" style={{ background: bandColor(o ?? Object.values(bands)[0]) }}>
-                  {o !== undefined ? fmtBand(o) : Object.values(bands)[0] !== undefined ? fmtBand(Object.values(bands)[0]) : '…'}
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-xl font-extrabold text-white" style={{ background: bandColor(o) }}>
+                  {o !== undefined ? fmtBand(o) : '…'}
                 </div>
                 <div className="min-w-48 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -58,9 +60,9 @@ export default function HistoryPage() {
                     deleteAttempt(a.id)
                     toast('Attempt deleted')
                   }}><Trash2 size={15} /></Button>
-                  <Link to={a.status === 'completed' ? `/results/${a.id}` : `/exam/${a.id}`}>
-                    <Button size="sm" variant={a.status === 'completed' ? 'secondary' : 'primary'}>{a.status === 'completed' ? 'View results' : 'Resume'} <ArrowRight size={15} /></Button>
-                  </Link>
+                  <Button size="sm" variant={a.status === 'completed' ? 'secondary' : 'primary'} onClick={() => navigate(a.status === 'completed' ? `/results/${a.id}` : `/exam/${a.id}`)}>
+                    {a.status === 'completed' ? 'View results' : 'Resume'} <ArrowRight size={15} />
+                  </Button>
                 </div>
               </motion.div>
             )
