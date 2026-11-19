@@ -1,5 +1,7 @@
 # BandReady — IELTS Mock Test Platform
 
+**Live:** https://muksiturrahman.github.io/ielts-mock-platform/
+
 Realistic **computer-delivered IELTS** mock tests (Academic and General Training) with
 rule-based marking for Listening and Reading, and **AI marking** for Writing and Speaking
 against the four official criteria of each. You can use a **free** AI provider (Google Gemini, Groq or OpenRouter)
