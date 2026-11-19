@@ -54,3 +54,10 @@ for n, part in enumerate(data):
     subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 's16le', '-ar', str(RATE), '-ac', '1', '-i', '-',
                     '-af', 'loudnorm=I=-18:TP=-2', '-ac', '1', '-b:a', '48k', str(dest)], input=bytes(pcm), check=True)
     print(dest.name, f'{len(pcm) / 2 / RATE / 60:.1f} min', cast, flush=True)
+
+# Lengths for the app's time estimates (src/data/seed/audioDurations.json), from every recording on disk.
+def seconds(f):
+    r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(f)], capture_output=True, text=True, check=True)
+    return round(float(r.stdout))
+durations = {f.stem: seconds(f) for f in sorted(out.glob('*.mp3'))}
+(Path(__file__).resolve().parent.parent / 'src' / 'data' / 'seed' / 'audioDurations.json').write_text(json.dumps(durations, indent=2) + '\n')

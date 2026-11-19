@@ -139,7 +139,7 @@ MARTIN: The right-hand half used to be the parcels office, and that's now the gi
 MARTIN: Walk through the building and you come out onto Platform 1. If you turn left, at the far end of the platform you'll see an empty space where the water tower stood. Sadly, it was demolished years ago. Turn right instead and walk past the footbridge, and at the very end of the platform is the signal box. You can climb up and have a go at pulling the levers.
 MARTIN: To get to Platform 2, cross the tracks using the footbridge. Right in the middle of Platform 2, directly opposite the main building, is the waiting room, which has been restored with its original fireplace.
 MARTIN: Behind Platform 2 there are two old buildings. The one at the right-hand end, near the footbridge, is the engine shed, and that's closed to the public because it's a working area. The one at the left-hand end is the old goods shed, and that's where you'll find our model railway, a scale model of the whole valley line.
-MARTIN: Finally, if you've brought some food, there's a picnic area outside. Come back out through the entrance and turn right. It's beside the main building, on the opposite side from the car park.
+MARTIN: Finally, if you've brought some food, there's a picnic area outside. Come back out through the entrance and turn left. It's beside the main building, on the opposite side from the car park.
 MARTIN: Right, enjoy your visit.
 NARRATOR: That is the end of Part Two.`,
     groups: [
@@ -183,7 +183,7 @@ NARRATOR: That is the end of Part Two.`,
           { id: 'm2-l-q17', number: 17, prompt: 'Signal box', answer: ['G'], explanation: `MARTIN: "Turn right instead and walk past the footbridge, and at the very end of the platform is the signal box." (C is where the water tower stood.)` },
           { id: 'm2-l-q18', number: 18, prompt: 'Waiting room', answer: ['D'], explanation: `MARTIN: "Right in the middle of Platform 2, directly opposite the main building, is the waiting room".` },
           { id: 'm2-l-q19', number: 19, prompt: 'Model railway', answer: ['E'], explanation: `MARTIN: "The one at the left-hand end is the old goods shed, and that's where you'll find our model railway". F is the engine shed, closed to the public.` },
-          { id: 'm2-l-q20', number: 20, prompt: 'Picnic area', answer: ['H'], explanation: `MARTIN: "Come back out through the entrance and turn right. It's beside the main building, on the opposite side from the car park."` },
+          { id: 'm2-l-q20', number: 20, prompt: 'Picnic area', answer: ['H'], explanation: `MARTIN: "Come back out through the entrance and turn left. It's beside the main building, on the opposite side from the car park."` },
         ],
       },
     ],

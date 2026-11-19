@@ -19,4 +19,9 @@ describe('writingChecks', () => {
     expect(writingChecks("It's cheap.", 10).find(x => x.label === 'Formal style')!.ok).toBe(false)
     expect(writingChecks("I'm writing to you.", 10, true).some(x => x.label === 'Formal style')).toBe(false)
   })
+  it('counts single-Enter paragraphs and curly-apostrophe contractions', () => {
+    const c = writingChecks('Intro here.\nBody one.\nBody two.\nConclusion.', 250)
+    expect(c.find(x => x.label === 'Paragraphs')!.detail).toMatch(/^4 paragraphs/)
+    expect(writingChecks('It’s cheap and I don’t care.', 10).find(x => x.label === 'Formal style')!.ok).toBe(false)
+  })
 })

@@ -28,6 +28,7 @@ export default function Tests() {
     [tests, filter, q],
   )
 
+  const fullTest = tests.find(t => availableModules(t).length === 4)
   return (
     <div>
       <PageHeader title="Mock tests" subtitle="Full computer-delivered mock exams, or practise one module at a time." />
@@ -50,7 +51,7 @@ export default function Tests() {
         <GraduationCap size={20} className="mt-0.5 shrink-0 text-brand-600" />
         <div>
           <b className="text-slate-900">New here? Start with a Full mock exam.</b> It's the complete test in the real order and timing:
-          Listening, Reading, Writing, then Speaking — about {fmtDuration(Object.values(MODULE_MINUTES).reduce((a, b) => a + b, 0))}.
+          Listening, Reading, Writing, then Speaking — about {fmtDuration(fullTest ? availableModules(fullTest).reduce((n, m) => n + moduleMinutes(fullTest, m), 0) : Object.values(MODULE_MINUTES).reduce((a, b) => a + b, 0))}.
           Choose <b>Academic</b> if you're taking IELTS for university study, or <b>General Training</b> for work or migration.
           <span className="text-slate-500"> Or use Practice to drill one part at a time.</span>
           {!hasKey && (

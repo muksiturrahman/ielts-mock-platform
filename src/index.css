@@ -182,6 +182,12 @@ body {
 }
 .exam svg text { fill: currentColor }
 
+/* Phone keyboard up while writing: give the answer box the room (the bars come back on blur). */
+@media (max-width: 767px) {
+  .exam:has(textarea:focus) footer,
+  .exam:has(textarea:focus) .exam-instructions { display: none; }
+}
+
 @media print {
   .no-print { display: none !important }
   body { background: #fff }

@@ -395,7 +395,7 @@ D| Upcycling Old Furniture
 Give tired furniture a new life. You will learn how to strip, repair, paint and decorate wooden pieces. Please bring along a small item of furniture to work on, such as a chair, a stool or a bedside table. All tools, brushes and paints are provided. Thursdays, 7–9.30 pm, for eight weeks. Fee: £135.
 
 E| Smartphone Photography
-Take better pictures with the phone you already own. Because much of the course involves shooting outdoors, sessions meet at the café in the Botanic Gardens rather than at the Learning Centre. Sign up with a friend and you will each receive 15% off the £90 fee. Saturdays, 10 am–12 noon, for five weeks.
+Take better pictures with the phone you already own. Because much of the course involves shooting outdoors, sessions meet at the café in the Botanic Gardens rather than at the Learning Centre. Sign up with a friend and you will each receive 15% off the £90 fee. Thursdays, 6–8 pm, for five weeks in the summer term, while evenings are still light.
 
 F| Creative Writing
 Whether you dream of writing a novel or simply want to record family memories, this friendly group will help you find your voice. Complete beginners are very welcome. The £180 fee may be spread over three equal monthly payments if you prefer. Wednesdays, 7–9 pm, for ten weeks.
@@ -439,7 +439,7 @@ NB You may use any letter more than once.`,
           { key: 'F', text: 'Creative Writing' },
         ],
         questions: [
-          { id: 'm4-r-q1', number: 1, prompt: 'Students must provide something to work on.', answer: ['D'], explanation: 'D: "Please bring along a small item of furniture to work on". Tools and paints are provided.' },
+          { id: 'm4-r-q1', number: 1, prompt: 'Students must bring an item that they will repair or decorate.', answer: ['D'], explanation: 'D: "Please bring along a small item of furniture to work on". Tools and paints are provided.' },
           { id: 'm4-r-q2', number: 2, prompt: 'There is a reduction for people who enrol together.', answer: ['E'], explanation: 'E: "Sign up with a friend and you will each receive 15% off".' },
           { id: 'm4-r-q3', number: 3, prompt: 'Successful students can obtain a qualification.', answer: ['C'], explanation: 'C: "Learners who pass the final assessment receive a nationally recognised Level 2 certificate."' },
           { id: 'm4-r-q4', number: 4, prompt: 'The class is held away from the Learning Centre.', answer: ['E'], explanation: 'E: "sessions meet at the café in the Botanic Gardens rather than at the Learning Centre."' },

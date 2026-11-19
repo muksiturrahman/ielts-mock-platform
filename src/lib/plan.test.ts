@@ -20,4 +20,8 @@ describe('studyPlan', () => {
   it('works without an exam date', () => {
     expect(studyPlan({ today, target: 6.5, bands: {}, weakTypes: [] }).days).toHaveLength(7)
   })
+  it('gives 7 different calendar days across a clock change', () => {
+    const days = studyPlan({ today: new Date(2026, 9, 22), target: 7, bands: {}, weakTypes: [] }).days.map(d => d.date.getDate())
+    expect(days).toEqual([22, 23, 24, 25, 26, 27, 28])
+  })
 })

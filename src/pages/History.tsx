@@ -3,7 +3,7 @@ import { ArrowRight, History as HistoryIcon, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Button, Empty, PageHeader, cx, bandColor, fmtBand, fmtDate, useToast } from '../components/ui'
-import { attemptOverall, MODULE_LABEL, moduleBands } from '../lib/attempts'
+import { attemptOverall, drillScore, MODULE_LABEL, moduleBands } from '../lib/attempts'
 import { deleteMedia } from '../lib/media'
 import { deleteAttempt, useDB } from '../lib/store'
 
@@ -37,7 +37,7 @@ export default function HistoryPage() {
               <motion.div key={a.id} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.04 }}
                 className="card flex flex-wrap items-center gap-4 p-4 transition hover:shadow-md">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-xl font-extrabold text-white" style={{ background: bandColor(o) }}>
-                  {o !== undefined ? fmtBand(o) : '…'}
+                  {drillScore(a) ?? (o !== undefined ? fmtBand(o) : '…')}
                 </div>
                 <div className="min-w-48 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

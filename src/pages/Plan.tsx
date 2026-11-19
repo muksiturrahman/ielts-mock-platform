@@ -53,7 +53,7 @@ export default function Plan() {
             </select>
           </label>
           <label><span className="label">Exam date</span>
-            <input className="input" type="date" value={profile.examDate ?? ''} min={new Date().toISOString().slice(0, 10)} onChange={e => setProfile({ examDate: e.target.value || undefined })} />
+            <input className="input" type="date" value={profile.examDate ?? ''} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10)} onChange={e => setProfile({ examDate: e.target.value || undefined })} />
           </label>
         </div>
         <p className="mt-3 flex items-center gap-2 text-sm text-slate-600">

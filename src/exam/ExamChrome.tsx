@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Settings2, Volume2, Wifi } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { setSettings, useDB } from '../lib/store'
 import type { AnswerValue, QuestionGroup } from '../lib/types'
 
@@ -166,14 +166,17 @@ export function QuestionNav({ parts, current, onPart, onJump, currentNumber, onP
 }
 
 export function jumpTo(n: number, tries = 30) {
-  if (tries === 30) window.dispatchEvent(new Event('exam:show-questions'))
   const el = document.getElementById(`q-${n}`)
   // Switching part animates the old one out first: wait (up to ~0.5 s) for the question to mount.
   if (!el) { if (tries > 0) requestAnimationFrame(() => jumpTo(n, tries - 1)); return }
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  // An empty "choose TWO" anchor focuses its group's first checkbox.
-  const target = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector<HTMLElement>('input,select') ?? (el.childElementCount ? null : el.parentElement?.querySelector<HTMLElement>('input,select'))
-  setTimeout(() => target?.focus({ preventScroll: true }), 350)
+  // On a phone the questions may be behind the Passage tab — open it (the new part's pane mounts on Passage), then scroll.
+  window.dispatchEvent(new Event('exam:show-questions'))
+  requestAnimationFrame(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // An empty "choose TWO" anchor focuses its group's first checkbox.
+    const target = el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el : el.querySelector<HTMLElement>('input,select') ?? (el.childElementCount ? null : el.parentElement?.querySelector<HTMLElement>('input,select'))
+    setTimeout(() => target?.focus({ preventScroll: true }), 350)
+  })
 }
 
 /** Draggable split pane (passage | questions), like the CD-IELTS layout. */
@@ -181,7 +184,8 @@ export function SplitPane({ left, right, labels = ['Passage', 'Questions'] }: { 
   const [pct, setPct] = useState(50)
   // Phones show one pane at a time, switched by tabs; a question jump opens the questions pane.
   const [tab, setTab] = useState(0)
-  useEffect(() => {
+  // Layout effect: a new part's pane must be listening before jumpTo's next frame fires the event.
+  useLayoutEffect(() => {
     const show = () => setTab(1)
     window.addEventListener('exam:show-questions', show)
     return () => window.removeEventListener('exam:show-questions', show)

@@ -77,7 +77,7 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
   return (
     <>
       <TopBar title="Writing" remaining={remaining} right={exitButton} />
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
+      <div className="exam-instructions flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5 exam-line exam-muted sm:px-6">
         <div>
           <span className="font-bold">Part {task.number}</span>
           <span className="ml-3 text-sm opacity-70">You should spend about {task.minutes} minutes on this task. Write at least {task.minWords} words.</span>
@@ -111,7 +111,7 @@ export default function WritingModule({ test, attempt, onSubmit, exitButton }: M
                   spellCheck={false} autoCorrect="off" autoCapitalize="off" autoComplete="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
                   aria-label={`Part ${task.number} answer`}
                   placeholder="Type your answer here"
-                  className="min-h-80 w-full flex-1 resize-none rounded-md p-4 leading-relaxed"
+                  className="min-h-48 w-full flex-1 resize-none rounded-md p-4 leading-relaxed md:min-h-80"
                 />
                 <div className="mt-2 flex items-center justify-between text-sm">
                   <span className={words < task.minWords ? 'opacity-70' : 'font-semibold text-emerald-600'}>Word count: {words}</span>

@@ -213,7 +213,7 @@ function ObjectiveView({ result, test, module, attempt, focus }: { result: Objec
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <Card className="h-fit p-6">
           <div className="flex flex-col items-center">
-            <BandRing band={result.band} size={140} label={MODULE_LABEL[module]} />
+            <BandRing band={attempt.drill ? undefined : result.band} size={140} label={attempt.drill ? `${attempt.drill} drill` : MODULE_LABEL[module]} />
             <p className="mt-3 font-semibold text-slate-700">{result.raw} / {result.total} correct</p>
           </div>
           <div className="mt-6"><TypeBars result={result} /></div>
@@ -501,7 +501,7 @@ function SpeakingView({ attempt, test }: { attempt: Attempt; test?: Test }) {
               </div>
               <div className="mb-2 text-sm font-semibold text-slate-700">{a.question}</div>
               <Annotated text={a.transcript || '(no speech recognised)'} notes={(s?.notes ?? []).map((n: TranscriptNote) => ({ quote: n.quote, label: n.type, detail: `${n.note}${n.upgrade ? ` → ${n.upgrade}` : ''}`, tone: TONE[n.type] ?? '' }))} />
-              {a.part === 2 && a.question === test?.speaking?.part2.topic && <Rewrites versions={[['sample', 'Sample Band 8+ long turn', test.speaking.part2.sample]]} open={sample} setOpen={setSample} />}
+              {a.part === 2 && test?.speaking && a.question.startsWith(`${test.speaking.part2.topic} (`) && <Rewrites versions={[['sample', 'Sample Band 8+ long turn', test.speaking.part2.sample]]} open={sample} setOpen={setSample} />}
             </div>
           ))}
         </div>

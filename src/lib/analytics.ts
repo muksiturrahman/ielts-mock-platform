@@ -15,7 +15,7 @@ export interface Weakness {
 /** Points for the progress chart, oldest first. */
 export function progressSeries(attempts: Attempt[]) {
   return attempts
-    .filter(a => a.status === 'completed')
+    .filter(a => a.status === 'completed' && !a.drill)
     .sort((a, b) => (a.finishedAt ?? 0) - (b.finishedAt ?? 0))
     .map(a => ({ date: new Date(a.finishedAt ?? a.startedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), ...moduleBands(a), overall: attemptOverall(a) }))
 }

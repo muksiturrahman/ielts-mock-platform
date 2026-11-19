@@ -27,7 +27,7 @@ export interface ModuleProps {
 
 const INSTRUCTIONS: Record<ModuleKey, (minutes: number, timed: boolean, paper?: boolean) => string[]> = {
   listening: (m, _t, paper) => [
-    `Time: approximately ${paper ? m + 8 : m} minutes, including ${paper ? 'transfer' : 'checking'} time.`,
+    `Time: approximately ${m} minutes, including ${paper ? 'transfer' : 'checking'} time.`,
     'Answer all the questions. You can change your answers at any time during the test.',
     'You will hear each part ONCE only. The recording plays automatically — there is no pause or rewind.',
     paper ? 'Paper-based format: at the end of the recording you have ten minutes to transfer your answers.' : 'At the end of the recording you have two minutes to check your answers.',

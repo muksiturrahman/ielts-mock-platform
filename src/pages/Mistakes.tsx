@@ -79,7 +79,7 @@ export default function Mistakes() {
         <div className="mb-6 flex items-center gap-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
           <Target size={18} className="shrink-0" />
           <span className="flex-1">Your most frequent mistake type is <b>{worst[0]}</b> ({worst[1]} wrong). Focus your next practice there.</span>
-          <Button size="sm" onClick={() => { const a = startDrill(tests, attempts, tab, worst[0]); if (a) navigate(`/exam/${a.id}`) }}>Drill it</Button>
+          <Button size="sm" onClick={() => { const a = startDrill(tests, attempts, tab, worst[0]); navigate(a ? `/exam/${a.id}` : '/tests') }}>Drill it</Button>
         </div>
       )}
 

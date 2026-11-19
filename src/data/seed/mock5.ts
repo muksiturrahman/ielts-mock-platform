@@ -194,7 +194,7 @@ TOM: Yes, that talk was pretty basic. Most of it's on the student union website 
 SOPHIE: And the list of vacancies they handed out was mostly jobs on the other side of the city, which is no good to me without a car.
 TOM: Did you notice what the employers kept going on about? I'd assumed they'd all want people who'd done that kind of work before.
 SOPHIE: So did I. But the woman from the bookshop said she'd much rather train someone from scratch. What nearly all of them stressed was being willing to work at different times: evenings, weekends, covering shifts at short notice.
-TOM: Yes, flexibility. And the manager from the café said the thing she looks for above everything else is how people talk to customers, whether they come across as warm and friendly. She said you can teach anyone to make coffee.
+TOM: Yes, flexibility. And almost every one of them said what they look for above everything else is how people talk to customers, whether they come across as warm and friendly. The café manager said you can teach anyone to make coffee.
 SOPHIE: A couple of them mentioned that speaking another language would be a bonus, but only a bonus. And nobody said anything about what you should wear, apart from the hotel.
 NARRATOR: Before you hear the rest of the discussion, you have some time to look at questions 25 to 30.
 NARRATOR: Now listen and answer questions 25 to 30.
@@ -241,7 +241,7 @@ NARRATOR: That is the end of Part Three.`,
             ],
             questions: [
               { id: 'm5-l-q23', number: 23, prompt: '', answer: ['B'], explanation: `SOPHIE: "What nearly all of them stressed was being willing to work at different times".` },
-              { id: 'm5-l-q24', number: 24, prompt: '', answer: ['D'], explanation: `TOM: the café manager looks "above everything else" at "whether they come across as warm and friendly." Languages were "only a bonus".` },
+              { id: 'm5-l-q24', number: 24, prompt: '', answer: ['D'], explanation: `TOM: "almost every one of them said what they look for above everything else is how people talk to customers". Only "a couple" mentioned languages.` },
             ],
           },
           {
@@ -385,7 +385,7 @@ NB You may use any letter more than once.`,
               { id: 'm5-r-q1', number: 1, prompt: 'Customers can cancel at any time without a penalty.', answer: ['A'], explanation: `A: "you can leave whenever you like without paying a cancellation fee."` },
               { id: 'm5-r-q2', number: 2, prompt: 'A new phone is included in the price.', answer: ['B'], explanation: `B: "comes with a brand-new smartphone of your choice".` },
               { id: 'm5-r-q3', number: 3, prompt: 'Data that is not used can be kept for later.', answer: ['D'], explanation: `D: "any data you don't use is carried over to the following month".` },
-              { id: 'm5-r-q4', number: 4, prompt: 'Only certain people are allowed to choose this plan.', answer: ['D'], explanation: `D: "Available exclusively to people in full-time education".` },
+              { id: 'm5-r-q4', number: 4, prompt: 'Customers must prove they belong to a particular group.', answer: ['D'], explanation: `D: "Available exclusively to people in full-time education".` },
               { id: 'm5-r-q5', number: 5, prompt: 'Customers can control what children are able to do online.', answer: ['C'], explanation: `C: "Free parental controls let you block unsuitable websites".` },
               { id: 'm5-r-q6', number: 6, prompt: 'Some calls to other countries cost nothing extra.', answer: ['B'], explanation: `B: "free calls to landlines and mobiles in 40 countries." A charges standard international rates.` },
               { id: 'm5-r-q7', number: 7, prompt: 'It is possible to pay more to add extra users.', answer: ['C'], explanation: `C: "Additional SIM cards can be added for £6 a month each."` },

@@ -107,6 +107,18 @@ export function stopSpeaking() {
   if (ttsSupported()) speechSynthesis.cancel()
 }
 
+/** Seconds of question-reading time after a script line (mid-part "you have some time to look at questions …"). */
+export const READING_PAUSE_SEC = 20
+export const isReadingPause = (l: { speaker: string; text: string }, i: number) =>
+  i > 0 && l.speaker === 'NARRATOR' && /time to look at|^now look at questions/i.test(l.text) // the opening one has its own preview
+
+/** How many script lines fit in `sec` seconds of speech (~14 characters a second at rate 1). */
+export function lineAfter(lines: ScriptLine[], start: number, sec: number, rate: number): { line: number; left: number } {
+  let line = start
+  while (line < lines.length && sec > 0) { sec -= lines[line].text.length / (14 * rate) + 0.5 + (isReadingPause(lines[line], line) ? READING_PAUSE_SEC : 0); line++ }
+  return { line, left: line < lines.length ? 0 : Math.max(0, sec) }
+}
+
 /** Plays a whole script once. `getVolume` is read per utterance so the volume slider works mid-play. */
 export async function playScript(
   lines: ScriptLine[],
@@ -118,9 +130,7 @@ export async function playScript(
     opts.onLine?.(i)
     const l = lines[i]
     await speak(l.text, { voice: voiceFor(l.speaker, speakers.indexOf(l.speaker)), rate: opts.rate, volume: opts.getVolume() })
-    // Mid-part "you have some time to look at questions …" gets real reading time (the opening one has its own preview).
-    const reading = i > 0 && l.speaker === 'NARRATOR' && /time to look at|^now look at questions/i.test(l.text)
-    await new Promise<void>(r => { const t = setTimeout(r, reading ? 20_000 : l.speaker === 'NARRATOR' ? 700 : 250); opts.signal.addEventListener('abort', () => { clearTimeout(t); r() }, { once: true }) })
+    await new Promise<void>(r => { const t = setTimeout(r, isReadingPause(l, i) ? READING_PAUSE_SEC * 1000 : l.speaker === 'NARRATOR' ? 700 : 250); opts.signal.addEventListener('abort', () => { clearTimeout(t); r() }, { once: true }) })
   }
 }
 

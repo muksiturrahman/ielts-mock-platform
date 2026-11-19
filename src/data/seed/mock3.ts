@@ -1,7 +1,7 @@
 import type { Test } from '../../lib/types'
 
 // Original seed content written for this app — not taken from any published IELTS test.
-// voices: NARRATOR=f, WOMAN=f, MAN=m, JAMES=m, PRIYA=f, TOM=m, DR HELEN MARSH=f, DR LUCY GRANT=f
+// voices: NARRATOR=f, WOMAN=f, MAN=m, JAMES=m, AISHA=f, BEN=m, DR HELEN MARSH=f, DR LUCY GRANT=f
 
 const T0 = Date.UTC(2026, 0, 1)
 
@@ -47,10 +47,11 @@ const PAPER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"
     <line x1="340" y1="270" x2="307" y2="270"/>
     <line x1="185" y1="270" x2="152" y2="270"/>
     <path d="M90,240 L90,122" fill="none" stroke-dasharray="5 4"/>
+    <path d="M555,300 L555,322 L245,322 L245,302" fill="none" stroke-dasharray="5 4"/>
   </g>
   <text x="100" y="185" fill="#444" font-size="12">used paper returned</text>
   <text x="100" y="200" fill="#444" font-size="12">for recycling</text>
-  <text x="400" y="320" text-anchor="middle" fill="#444" font-size="11">(dashed box = optional stage)</text>
+  <text x="400" y="342" text-anchor="middle" fill="#444" font-size="11">(stage 6 is optional: paper that is not bleached skips it)</text>
 </svg>`
 
 export const mock3: Test = {
@@ -229,39 +230,39 @@ NARRATOR: That is the end of Part Two.`,
       {
         id: 'm3-l-s3',
         title: 'Part 3',
-        context: 'You will hear two students, Priya and Tom, talking to their tutor, Dr Helen Marsh, about a survey they carried out on how people commute.',
-        transcript: `NARRATOR: Part Three. You will hear two students, Priya and Tom, talking to their tutor, Dr Helen Marsh, about a survey they carried out on how people commute. First you have some time to look at questions 21 to 26.
+        context: 'You will hear two students, Aisha and Ben, talking to their tutor, Dr Helen Marsh, about a survey they carried out on how people commute.',
+        transcript: `NARRATOR: Part Three. You will hear two students, Aisha and Ben, talking to their tutor, Dr Helen Marsh, about a survey they carried out on how people commute. First you have some time to look at questions 21 to 26.
 NARRATOR: Now listen carefully and answer questions 21 to 26.
-DR HELEN MARSH: Hello, Priya, Tom. Have a seat. So, the commuting survey is finished. Tell me how the pilot went first, because I know you changed a few things afterwards.
-PRIYA: Yes, we did. We piloted it with about twenty people at the main bus station. The questionnaire itself seemed to work. People finished it in about five minutes, so we didn't need to cut anything.
-TOM: We thought about putting it online to reach more people, but in the end we felt face-to-face interviews gave us better answers, so we kept that.
-PRIYA: The first real change was where we did the interviews. At the bus station, obviously, almost everyone was a bus user, so for the main survey we moved to the entrance of the shopping centre, where you get a much better mix of people.
+DR HELEN MARSH: Hello, Aisha, Ben. Have a seat. So, the commuting survey is finished. Tell me how the pilot went first, because I know you changed a few things afterwards.
+AISHA: Yes, we did. We piloted it with about twenty people at the main bus station. The questionnaire itself seemed to work. People finished it in about five minutes, so we didn't need to cut anything.
+BEN: We thought about putting it online to reach more people, but in the end we felt face-to-face interviews gave us better answers, so we kept that.
+AISHA: The first real change was where we did the interviews. At the bus station, obviously, almost everyone was a bus user, so for the main survey we moved to the entrance of the shopping centre, where you get a much better mix of people.
 DR HELEN MARSH: Sensible. And the second change?
-TOM: Several people in the pilot said that what mattered most to them was how much their journey cost, and we hadn't asked about that at all. So we added a question on weekly travel costs.
+BEN: Several people in the pilot said that what mattered most to them was how much their journey cost, and we hadn't asked about that at all. So we added a question on weekly travel costs.
 DR HELEN MARSH: Did you consider offering an incentive? A prize draw, say?
-PRIYA: We did discuss it, but the department told us we weren't allowed to.
+AISHA: We did discuss it, but the department told us we weren't allowed to.
 DR HELEN MARSH: Fair enough. Now, I've looked at your data. Two hundred and twelve responses is plenty for a project like this, so size isn't a concern. What does worry me a little is who your respondents are. Nearly half of them describe themselves as students.
-TOM: That's probably because the shopping centre's right next to the college.
+BEN: That's probably because the shopping centre's right next to the college.
 DR HELEN MARSH: Probably. The age range looks reasonable, but you'll need to acknowledge that students are over-represented when you write it up.
 DR HELEN MARSH: What did you find about journey times?
-PRIYA: We'd expected people here to have shorter commutes than the national average, because it's quite a compact city. But our average was thirty-eight minutes each way, which is almost exactly the national figure.
-TOM: And we can't really say whether journeys have got longer, because there's no earlier local survey to compare with.
+AISHA: We'd expected people here to have shorter commutes than the national average, because it's quite a compact city. But our average was thirty-eight minutes each way, which is almost exactly the national figure.
+BEN: And we can't really say whether journeys have got longer, because there's no earlier local survey to compare with.
 DR HELEN MARSH: In your draft you compare the types of transport: car, bus, bike and so on. That's fine, but it can be misleading, because cyclists tend to live much closer to where they work. I think you'd get more out of the data if you grouped people by how far they travel. I know you'd been thinking of grouping them by age, but I'd do distance first.
-PRIYA: OK, that makes sense.
+AISHA: OK, that makes sense.
 DR HELEN MARSH: So, what's next?
-TOM: I was going to start redrawing the charts, but Priya thought we should get some official figures first.
-PRIYA: The city council's transport office publishes passenger numbers, and it would be good to check our results against them.
-TOM: Yes, all right. I'll email the transport office this afternoon, and the charts can wait until we've heard back.
+BEN: I was going to start redrawing the charts, but Aisha thought we should get some official figures first.
+AISHA: The city council's transport office publishes passenger numbers, and it would be good to check our results against them.
+BEN: Yes, all right. I'll email the transport office this afternoon, and the charts can wait until we've heard back.
 NARRATOR: Before you hear the rest of the discussion, you have some time to look at questions 27 to 30.
 NARRATOR: Now listen and answer questions 27 to 30.
 DR HELEN MARSH: Let's go through your main findings for each group of commuters. Start with the cyclists.
-TOM: Well, the cyclists were by far the happiest with their journey. Nearly ninety per cent said they were satisfied or very satisfied, even the ones who cycle in the rain.
+BEN: Well, the cyclists were by far the happiest with their journey. Nearly ninety per cent said they were satisfied or very satisfied, even the ones who cycle in the rain.
 DR HELEN MARSH: And the bus users?
-PRIYA: We'd assumed bus users would complain most about reliability, but that wasn't the big issue. Fares went up in the spring, and over sixty per cent of them said cost was their biggest concern.
+AISHA: We'd assumed bus users would complain most about reliability, but that wasn't the big issue. Fares went up in the spring, and over sixty per cent of them said cost was their biggest concern.
 DR HELEN MARSH: The drivers?
-TOM: Drivers were the group most likely to describe their journey as stressful, mostly because of the traffic on the ring road. We asked whether anything would make them leave the car at home, and very few said they would, even if parking prices went up.
+BEN: Drivers were the group most likely to describe their journey as stressful, mostly because of the traffic on the ring road. We asked whether anything would make them leave the car at home, and very few said they would, even if parking prices went up.
 DR HELEN MARSH: And train passengers?
-PRIYA: There weren't many of them, but what stood out was how they use the time. Most said they read or answer emails on the train, so for them the journey is really part of the working day.
+AISHA: There weren't many of them, but what stood out was how they use the time. Most said they read or answer emails on the train, so for them the journey is really part of the working day.
 DR HELEN MARSH: That's a nice point to finish your results section on. Well done, both of you.
 NARRATOR: That is the end of Part Three.`,
         groups: [
@@ -278,8 +279,8 @@ NARRATOR: That is the end of Part Three.`,
               { key: 'E', text: 'They moved the survey online.' },
             ],
             questions: [
-              { id: 'm3-l-q21', number: 21, prompt: '', answer: ['B'], explanation: 'TOM: "So we added a question on weekly travel costs."' },
-              { id: 'm3-l-q22', number: 22, prompt: '', answer: ['C'], explanation: 'PRIYA: "for the main survey we moved to the entrance of the shopping centre". They did not shorten it, go online or offer a prize.' },
+              { id: 'm3-l-q21', number: 21, prompt: '', answer: ['B'], explanation: 'BEN: "So we added a question on weekly travel costs."' },
+              { id: 'm3-l-q22', number: 22, prompt: '', answer: ['C'], explanation: 'AISHA: "for the main survey we moved to the entrance of the shopping centre". They did not shorten it, go online or offer a prize.' },
             ],
           },
           {
@@ -295,7 +296,7 @@ NARRATOR: That is the end of Part Three.`,
               {
                 id: 'm3-l-q24', number: 24, prompt: 'What did the students discover about the length of commutes?',
                 options: [{ key: 'A', text: 'It was shorter than the national average.' }, { key: 'B', text: 'It was similar to the national average.' }, { key: 'C', text: 'It had increased in recent years.' }],
-                answer: ['B'], explanation: 'PRIYA: "our average was thirty-eight minutes each way, which is almost exactly the national figure." They cannot say whether journeys have got longer.',
+                answer: ['B'], explanation: 'AISHA: "our average was thirty-eight minutes each way, which is almost exactly the national figure." They cannot say whether journeys have got longer.',
               },
               {
                 id: 'm3-l-q25', number: 25, prompt: 'The tutor suggests analysing the data according to',
@@ -303,9 +304,9 @@ NARRATOR: That is the end of Part Three.`,
                 answer: ['A'], explanation: 'DR HELEN MARSH: "you\'d get more out of the data if you grouped people by how far they travel."',
               },
               {
-                id: 'm3-l-q26', number: 26, prompt: 'What will Tom do next?',
+                id: 'm3-l-q26', number: 26, prompt: 'What will Ben do next?',
                 options: [{ key: 'A', text: 'redraw the charts' }, { key: 'B', text: 'contact the council' }, { key: 'C', text: 'revise the questionnaire' }],
-                answer: ['B'], explanation: 'TOM: "I\'ll email the transport office this afternoon, and the charts can wait".',
+                answer: ['B'], explanation: 'BEN: "I\'ll email the transport office this afternoon, and the charts can wait".',
               },
             ],
           },
@@ -322,10 +323,10 @@ NARRATOR: That is the end of Part Three.`,
               { key: 'F', text: 'said cost was their main concern' },
             ],
             questions: [
-              { id: 'm3-l-q27', number: 27, prompt: 'Cyclists', answer: ['E'], explanation: 'TOM: "the cyclists were by far the happiest with their journey."' },
-              { id: 'm3-l-q28', number: 28, prompt: 'Bus users', answer: ['F'], explanation: 'PRIYA: "over sixty per cent of them said cost was their biggest concern." Reliability "wasn\'t the big issue".' },
-              { id: 'm3-l-q29', number: 29, prompt: 'Car drivers', answer: ['A'], explanation: 'TOM: "Drivers were the group most likely to describe their journey as stressful". Very few would switch even if parking prices rose, so not C.' },
-              { id: 'm3-l-q30', number: 30, prompt: 'Train passengers', answer: ['D'], explanation: 'PRIYA: "Most said they read or answer emails on the train, so for them the journey is really part of the working day."' },
+              { id: 'm3-l-q27', number: 27, prompt: 'Cyclists', answer: ['E'], explanation: 'BEN: "the cyclists were by far the happiest with their journey."' },
+              { id: 'm3-l-q28', number: 28, prompt: 'Bus users', answer: ['F'], explanation: 'AISHA: "over sixty per cent of them said cost was their biggest concern." Reliability "wasn\'t the big issue".' },
+              { id: 'm3-l-q29', number: 29, prompt: 'Car drivers', answer: ['A'], explanation: 'BEN: "Drivers were the group most likely to describe their journey as stressful". Very few would switch even if parking prices rose, so not C.' },
+              { id: 'm3-l-q30', number: 30, prompt: 'Train passengers', answer: ['D'], explanation: 'AISHA: "Most said they read or answer emails on the train, so for them the journey is really part of the working day."' },
             ],
           },
         ],
@@ -433,11 +434,11 @@ The consequences were felt far beyond the world of sport. In the 1890s, cycling 
               'Do the following statements agree with the information given in Reading Passage 1? Write TRUE if the statement agrees with the information, FALSE if the statement contradicts the information, NOT GIVEN if there is no information on this.',
             questions: [
               { id: 'm3-r-q1', number: 1, prompt: "Drais's machine was steered using a bar attached to the front wheel.", answer: ['TRUE'], explanation: 'Paragraph 1: the rider "steered by turning a bar connected to the front wheel."' },
-              { id: 'm3-r-q2', number: 2, prompt: 'On his first journey, Drais travelled more slowly than a person on foot.', answer: ['FALSE'], explanation: 'Paragraph 1: he covered fourteen kilometres in a little over an hour, "considerably faster than a person could walk."' },
+              { id: 'm3-r-q2', number: 2, prompt: 'On his 1817 journey from Mannheim, Drais travelled more slowly than a person on foot.', answer: ['FALSE'], explanation: 'Paragraph 1: he covered fourteen kilometres in a little over an hour, "considerably faster than a person could walk."' },
               { id: 'm3-r-q3', number: 3, prompt: 'Drais wrote that a shortage of horses was his reason for building the machine.', answer: ['FALSE'], explanation: 'Paragraph 2: "Drais left no written statement of his motives".' },
               { id: 'm3-r-q4', number: 4, prompt: 'The hobby-horse was more popular in London than in Paris.', answer: ['NOT GIVEN'], explanation: 'Paragraph 3 says copies appeared in both cities but never compares their popularity.' },
               { id: 'm3-r-q5', number: 5, prompt: 'Some cities punished people for riding hobby-horses.', answer: ['TRUE'], explanation: 'Paragraph 3: "Several cities introduced bans or fines".' },
-              { id: 'm3-r-q6', number: 6, prompt: 'Historians agree on who first attached pedals to a two-wheeled machine.', answer: ['FALSE'], explanation: 'Paragraph 4: "Exactly who did so first is a matter of dispute".' },
+              { id: 'm3-r-q6', number: 6, prompt: 'It is known for certain who first attached pedals to a two-wheeled machine.', answer: ['FALSE'], explanation: 'Paragraph 4: "Exactly who did so first is a matter of dispute".' },
               { id: 'm3-r-q7', number: 7, prompt: 'The ordinary cost more to buy than the boneshaker.', answer: ['NOT GIVEN'], explanation: 'Paragraph 5 compares weight, speed and safety, but says nothing about price.' },
             ],
           },

@@ -146,6 +146,8 @@ export function normalizeAnswer(s: string): string {
   t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')
   t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(?:the\\s+)?(\\d{1,2})\\b`, 'g'), '$2 $1') // "June (the) 1" → "1 june"
   t = t.replace(new RegExp(`\\bthe\\s+(\\d{1,2} (?:${MONTH_RE}))\\b`, 'g'), '$1') // "the 15 march" = "15 march"
+  // A weekday before a date adds nothing: "Monday 10th June" = "10 June", "Thursday the 13th" = "13th"
+  t = t.replace(/^(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\s+(?=\d{1,2}(?:\s|$))/, '')
   // phone / long numbers written in groups: "07962 551 340" → "07962551340"
   t = t.replace(/(\d)[\s-]+(?=\d{3,})/g, '$1')
   t = t.replace(/[£$€]/g, '').replace(/(\d),(?=\d{3}\b)/g, '$1')

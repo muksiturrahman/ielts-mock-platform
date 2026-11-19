@@ -229,4 +229,11 @@ describe('round-4 scoring', () => {
     expect(normalizeAnswer('the 5th floor')).not.toBe(normalizeAnswer('5th floor'))
     expect(normalizeAnswer('the 2 bedrooms')).not.toBe(normalizeAnswer('2 bedrooms'))
   })
+  it('ignores a weekday in front of a date', () => {
+    expect(normalizeAnswer('Monday 10th June')).toBe(normalizeAnswer('10 June'))
+    expect(normalizeAnswer('Monday, June 10th')).toBe(normalizeAnswer('10 June'))
+    expect(normalizeAnswer('Thursday the 13th')).toBe(normalizeAnswer('13th'))
+    expect(normalizeAnswer('Thursday')).toBe('thursday')
+    expect(normalizeAnswer('Friday 3 pm')).not.toBe(normalizeAnswer('3 pm')) // a time, not a date
+  })
 })

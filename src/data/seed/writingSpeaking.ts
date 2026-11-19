@@ -191,7 +191,7 @@ To begin with, used bottles are collected from bottle banks and transported by l
 
 In the next stage, the clean glass is crushed into small pieces, known as cullet. This cullet is subsequently melted in a furnace at a temperature of 1,500°C, after which the molten glass is moulded into new bottles.
 
-Finally, the new bottles are filled and delivered to shops, where they are sold to consumers. Once the bottles have been used, they are returned to bottle banks, and the whole cycle begins again. In this way, the same glass can be reused repeatedly rather than being thrown away.`,
+Finally, the new bottles are filled and delivered to shops. Once they have been used, they are returned to bottle banks, and the whole cycle begins again.`,
     minWords: 150,
     minutes: 20,
   },

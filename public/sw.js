@@ -27,7 +27,8 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url)
   if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.endsWith('.mp3')) return
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(res => { if (res.ok) e.waitUntil(refreshShell(res.clone())); return res }).catch(() => caches.match(ROOT, { ignoreVary: true })))
+    // Only HTML refreshes the app shell — not an image or the manifest opened in a tab.
+    e.respondWith(fetch(req).then(res => { if (res.ok && res.headers.get('content-type')?.includes('text/html')) e.waitUntil(refreshShell(res.clone())); return res }).catch(() => caches.match(ROOT, { ignoreVary: true })))
     return
   }
   e.respondWith(caches.match(req, { ignoreVary: true }).then(hit => hit || fetch(req).then(res => {

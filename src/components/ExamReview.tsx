@@ -3,15 +3,17 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Passage } from '../exam/Passage'
 import { QuestionGroupView } from '../exam/QuestionGroupView'
+import { drillSections } from '../lib/attempts'
 import { parseScript } from '../lib/speech'
 import { useDB } from '../lib/store'
-import type { Attempt, ObjectiveResult, Test } from '../lib/types'
+import type { Attempt, ListeningSection, ObjectiveResult, ReadingSection, Test } from '../lib/types'
 import { cx } from './ui'
 
 /** Re-opens a finished Listening/Reading module exactly as sat, with every answer marked and explained. */
 export function ExamReview({ attempt, test, module, result, focus }: { attempt: Attempt; test: Test; module: 'listening' | 'reading'; result: ObjectiveResult; focus?: number }) {
   const contrast = useDB(d => d.settings.contrast)
-  const sections = test[module]?.sections ?? []
+  const all: (ListeningSection | ReadingSection)[] = test[module]?.sections ?? []
+  const sections = drillSections(all, attempt.drill)
   const shown = result.items.length ? [...new Set(result.items.map(i => i.sectionIndex))].sort((a, b) => a - b) : sections.map((_, i) => i)
   const startSection = focus ? result.items.find(i => i.number === focus)?.sectionIndex ?? shown[0] : shown[0]
   const [sectionIndex, setSectionIndex] = useState(startSection)

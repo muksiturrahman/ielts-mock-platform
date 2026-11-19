@@ -26,9 +26,14 @@ export function moduleMinutes(test: Test, module: ModuleKey, sections?: number[]
   if (module === 'writing') {
     return (test.writing?.tasks ?? []).filter(t => !sections || sections.includes(t.number)).reduce((s, t) => s + t.minutes, 0) || MODULE_MINUTES.writing
   }
+  // Paper-based Listening: 10 minutes to transfer instead of 2 to check.
+  if (module === 'listening') {
+    const parts = (sections ?? test.listening?.sections.map((_, i) => i) ?? []).map(i => test.listening?.sections[i])
+    const sec = parts.every(p => p?.durationSec) ? parts.reduce((n, p) => n + p!.durationSec!, 0) : parts.length * 7.5 * 60 // ~30 min for 4 parts
+    return Math.ceil(sec / 60) + (getDB().settings.paperListening ? 10 : 2) // checking or (paper) transfer time
+  }
   if (!sections) return MODULE_MINUTES[module]
   if (module === 'reading') return 20 * sections.length
-  if (module === 'listening') return 8 * sections.length
   return MODULE_MINUTES[module]
 }
 
@@ -221,10 +226,17 @@ export function writingTasksTaken(a: Attempt): (1 | 2)[] {
 }
 
 /** Final module bands, with a human examiner's overrides taking precedence over AI marks. */
+/** "7/9" for a finished drill — shown where other attempts show a band. */
+export function drillScore(a: Attempt): string | undefined {
+  const r = a.drill ? a.results.reading ?? a.results.listening : undefined
+  return r && `${r.raw}/${r.total}`
+}
+
 export function moduleBands(a: Attempt): Partial<Record<ModuleKey, number>> {
   const out: Partial<Record<ModuleKey, number>> = {}
-  if (a.results.listening) out.listening = a.results.listening.band
-  if (a.results.reading) out.reading = a.results.reading.band
+  // A one-type drill has no band: 4/4 would scale to band 9.
+  if (a.results.listening && !a.drill) out.listening = a.results.listening.band
+  if (a.results.reading && !a.drill) out.reading = a.results.reading.band
   const w = a.results.writing
   const rw = a.review?.writing
   const t1 = writingTaskBand(w?.task1, rw?.task1)

@@ -7,7 +7,7 @@ import { practiceTarget, progressSeries, skillAverages, weaknesses, type Weaknes
 import { reviewItems } from '../lib/review'
 import { createAttempt } from '../lib/attempts'
 import { isDue } from '../lib/store'
-import { attemptOverall, moduleBands, MODULE_LABEL } from '../lib/attempts'
+import { attemptOverall, drillScore, moduleBands, MODULE_LABEL } from '../lib/attempts'
 import { useDB } from '../lib/store'
 import type { ModuleKey } from '../lib/types'
 import { MODULE_ICON, MODULE_TONE } from './Tests'
@@ -194,10 +194,10 @@ export default function Dashboard() {
                 return (
                   <li key={a.id}>
                     <Link to={a.status === 'completed' ? `/results/${a.id}` : `/exam/${a.id}`} className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-slate-50">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl font-display font-extrabold text-white" style={{ background: bandColor(o) }}>{o === undefined ? '…' : fmtBand(o)}</div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl font-display font-extrabold text-white" style={{ background: bandColor(o) }}>{drillScore(a) ?? (o === undefined ? '…' : fmtBand(o))}</div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-slate-800">{a.testTitle}</div>
-                        <div className="text-xs text-slate-500">{a.mode === 'full' ? 'Full mock' : `Practice · ${a.modules.map(m => MODULE_LABEL[m]).join(', ')}`} · {fmtDate(a.startedAt)}</div>
+                        <div className="text-xs text-slate-500">{a.mode === 'full' ? 'Full mock' : a.drill ? `${a.drill} drill · ${MODULE_LABEL[a.modules[0]]}` : `Practice · ${a.modules.map(m => MODULE_LABEL[m]).join(', ')}`} · {fmtDate(a.startedAt)}</div>
                       </div>
                       {a.status === 'in_progress' && <span className="text-xs font-semibold text-amber-600">Resume</span>}
                       <ArrowRight size={16} className="text-slate-300" />

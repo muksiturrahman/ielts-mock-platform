@@ -59,6 +59,8 @@ export interface ListeningSection {
   /** One line per utterance: "SPEAKER: text". Used for TTS when no audio is uploaded, and for review. */
   transcript: string
   audio?: string // media id or URL; overrides TTS
+  /** Length of the recording incl. its reading pauses (built-in tests), for time estimates. */
+  durationSec?: number
   groups: QuestionGroup[]
 }
 

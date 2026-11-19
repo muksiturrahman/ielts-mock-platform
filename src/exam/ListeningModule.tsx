@@ -3,7 +3,7 @@ import { drillSections } from '../lib/attempts'
 import { Headphones, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../lib/media'
-import { parseScript, playScript, speak, stopSpeaking, ttsSupported } from '../lib/speech'
+import { lineAfter, parseScript, playScript, speak, stopSpeaking, ttsSupported } from '../lib/speech'
 import { patchAttempt, useDB } from '../lib/store'
 import { useToast } from '../components/ui'
 import { fmtClock, jumpTo, partNav, QuestionNav, TopBar, useDeadline, useNow } from './ExamChrome'
@@ -33,12 +33,6 @@ function silentWav() {
  * Plays one listening part once: uploaded audio if it plays, otherwise the script via text-to-speech.
  * `preview` (the 30 s question time) runs only for the script — real recordings include their own pauses.
  */
-/** How many script lines fit in `sec` seconds of speech (~14 characters a second at rate 1). */
-function lineAfter(lines: { text: string }[], start: number, sec: number, rate: number): { line: number; left: number } {
-  let line = start
-  while (line < lines.length && sec > 0) { sec -= lines[line].text.length / (14 * rate) + 0.5; line++ }
-  return { line, left: line < lines.length ? 0 : Math.max(0, sec) }
-}
 
 async function playPart(
   section: { transcript: string; audio?: string; context: string },

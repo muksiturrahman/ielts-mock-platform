@@ -38,7 +38,7 @@ export function studyPlan(opts: {
   const days: PlanDay[] = []
   let r = 0
   for (let i = 0; i < 7; i++) {
-    const date = new Date(start.getTime() + i * DAY)
+    const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i) // not +24 h: DST days are 23/25 h
     const left = daysLeft === undefined ? undefined : daysLeft - i
     let task: PlanTask
     if (left !== undefined && left < 0) break
