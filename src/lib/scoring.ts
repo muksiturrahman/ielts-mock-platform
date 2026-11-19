@@ -141,6 +141,7 @@ export function normalizeAnswer(s: string): string {
     return `${hour}:${mm ?? '00'}`
   })
   // dates: "21st march", "march 21", "21 march" → "21 march" (before digit groups are joined, so the year stays separate)
+  t = t.replace(/(^|\s)the\s+(\d{1,2}(?:st|nd|rd|th))\b(?!\s+\w)/g, '$1$2') // a bare "the 1st." = "1st" (not "the 5th floor")
   t = t.replace(/\b(\d{1,2})(st|nd|rd|th)\b/g, '$1')
   t = t.replace(new RegExp(`\\b(\\d{1,2})\\s+of\\s+(${MONTH_RE})\\b`, 'g'), '$1 $2')
   t = t.replace(new RegExp(`\\b(${MONTH_RE})\\s+(?:the\\s+)?(\\d{1,2})\\b`, 'g'), '$2 $1') // "June (the) 1" → "1 june"
@@ -155,7 +156,7 @@ export function normalizeAnswer(s: string): string {
   t = t.replace(/(\d):(\d{2})\b/g, '$1.$2').replace(/\b0(\d)\.(\d{2})\b/g, '$1.$2')
   // "£75.00" = "75", "3.50" = "3.5", "10.00 am" = "10 am" — the same on both sides, so styles never matter
   t = t.replace(/(\d)\.0+\b(?!\.\d)/g, '$1').replace(/(\d\.\d*[1-9])0+\b(?!\.\d)/g, '$1') // not inside "3.0.1"
-  t = t.replace(/\bthe\s+(\d{1,2})(?=\s|$)/g, '$1') // "the 1st" (ordinal) = "1st"
+
   t = t.replace(/[“”"'‘’`]/g, '').replace(/[.,;!?]+$/g, '').replace(/[.,;!?](\s|$)/g, '$1')
   t = t.replace(/-/g, ' ').replace(/\s+/g, ' ').trim()
   return t.split(' ').map(normWord).join(' ')

@@ -187,7 +187,7 @@ function StartDialog({ test, onClose }: { test: Test; onClose: () => void }) {
         </div>
       )}
 
-      {!recognitionSupported() && (mode === 'full' || module === 'speaking') && (
+      {!recognitionSupported() && ((mode === 'full' && mods.includes('speaking')) || (mode === 'practice' && module === 'speaking')) && (
         <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
           This browser can't transcribe speech, so Speaking can be recorded but not marked. Use <b>Chrome</b> or <b>Edge</b> for the Speaking test.
         </p>

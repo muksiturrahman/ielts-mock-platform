@@ -32,6 +32,13 @@ function silentWav() {
  * Plays one listening part once: uploaded audio if it plays, otherwise the script via text-to-speech.
  * `preview` (the 30 s question time) runs only for the script — real recordings include their own pauses.
  */
+/** How many script lines fit in `sec` seconds of speech (~14 characters a second at rate 1). */
+function lineAfter(lines: { text: string }[], start: number, sec: number, rate: number): { line: number; left: number } {
+  let line = start
+  while (line < lines.length && sec > 0) { sec -= lines[line].text.length / (14 * rate) + 0.5; line++ }
+  return { line, left: line < lines.length ? 0 : Math.max(0, sec) }
+}
+
 async function playPart(
   section: { transcript: string; audio?: string; context: string },
   opts: {
@@ -53,7 +60,15 @@ async function playPart(
       el.src = url
       el.volume = opts.getVolume()
       if (opts.resumeAt?.audioPos) {
-        await new Promise<void>(r => (el.readyState >= 1 ? r() : (el.addEventListener('loadedmetadata', () => r(), { once: true }), el.addEventListener('error', () => r(), { once: true }))))
+        await new Promise<void>(r => {
+          if (el.readyState >= 1) return r()
+          const t = setTimeout(r, STALL_MS) // a URL that never answers falls through to the stall/error handling
+          const done = () => { clearTimeout(t); r() }
+          el.addEventListener('loadedmetadata', done, { once: true })
+          el.addEventListener('error', done, { once: true })
+          opts.signal.addEventListener('abort', done, { once: true })
+        })
+        if (opts.signal.aborted) return 0
         // Away for longer than the rest of this recording: it has already finished — the rest carries to the next part.
         if (Number.isFinite(el.duration) && opts.resumeAt.audioPos >= el.duration) return opts.resumeAt.audioPos - el.duration
         el.currentTime = opts.resumeAt.audioPos
@@ -87,6 +102,7 @@ async function playPart(
       el.onpause = null
       // How far the recording got: the script carries on from about there instead of replaying the part.
       if (el.duration > 0 && el.currentTime / el.duration > 0.02) heardShare = el.currentTime / el.duration
+      else if (el.duration > 0 && opts.resumeAt?.audioPos) heardShare = Math.min(1, opts.resumeAt.audioPos / el.duration)
       el.pause()
       opts.onPausedChange(false)
       if (opts.signal.aborted) return 0
@@ -98,7 +114,10 @@ async function playPart(
   if (section.audio) opts.onAudioError() // file failed, stalled, or is missing from this browser
   const lines = parseScript(section.transcript)
   if (section.audio) opts.onProgress({ audioPos: undefined }) // from here on the script is the position to resume
-  const from = opts.resumeAt?.scriptLine ?? (heardShare ? Math.floor(lines.length * heardShare) : undefined)
+  const from = opts.resumeAt?.scriptLine
+    ?? (heardShare ? Math.floor(lines.length * heardShare) : undefined)
+    // the file never loaded, but there was a time position (a carried absence): estimate the line from it
+    ?? (opts.resumeAt?.audioPos ? lineAfter(lines, 0, opts.resumeAt.audioPos, opts.rate).line : undefined)
   if (from === undefined) await opts.preview()
   if (opts.signal.aborted) return 0
   await playScript(lines, { ...opts, from: from ?? 0, onLine: i => opts.onProgress({ scriptLine: i }) })
@@ -160,21 +179,21 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     // carried on into the following parts if the absence was longer than the rest of this one.
     let carry = attempt.mode === 'full' && saved.leftAt && saved.section === from ? (Date.now() - saved.leftAt) / 1000 : 0
     const skipScript = (i: number, startLine: number) => {
-      const lines = parseScript(sections[i].transcript)
-      let line = startLine
-      while (line < lines.length && carry > 0) { carry -= lines[line].text.length / (14 * rate) + 0.5; line++ } // ~14 chars/s spoken
-      if (line < lines.length) carry = 0
-      return line
+      const r = lineAfter(parseScript(sections[i].transcript), startLine, carry, rate)
+      carry = r.left
+      return r.line
     }
     for (let i = from; i < sections.length; i++) {
       if (ctrl.signal.aborted) return
       let resumeAt: { audioPos?: number; scriptLine?: number } | undefined = i === from && saved.section === i ? { audioPos: saved.audioPos, scriptLine: saved.scriptLine } : undefined
       if (carry > 0) {
-        if (i !== from) carry = Math.max(0, carry - PREVIEW_SEC - 3) // the part's own preview and announcement went by too
-        if (sections[i].audio) { resumeAt = { audioPos: (resumeAt?.audioPos ?? 0) + carry }; carry = 0 }
+        // the part's announcement (and, for the read-aloud script, its 30 s preview) went by too
+        if (i !== from) carry = Math.max(0, carry - 3 - (sections[i].audio ? 0 : PREVIEW_SEC))
+        // A saved script line means the script was being read (audio failed): stay on the script.
+        if (sections[i].audio && resumeAt?.scriptLine === undefined) { resumeAt = { audioPos: (resumeAt?.audioPos ?? 0) + carry }; carry = 0 }
         else if (carry > 0) resumeAt = { scriptLine: skipScript(i, resumeAt?.scriptLine ?? 0) }
       }
-      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, leftAt: undefined, ...(resumeAt ? {} : { audioPos: undefined, scriptLine: undefined }) } } }))
+      patchAttempt(attempt.id, a => ({ progress: { ...a.progress, listening: { ...a.progress.listening, section: i, leftAt: undefined, audioPos: resumeAt?.audioPos, scriptLine: resumeAt?.scriptLine } } }))
       setPlaying(i)
       setView(i)
       carry += await playPart(sections[i], {
@@ -195,7 +214,7 @@ export default function ListeningModule({ test, attempt, onSubmit, setAnswer, to
     abortRef.current = null // finished: practice Replay may start a new run
     setPlaying(null)
     patchAttempt(attempt.id, a => ({
-      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + CHECK_MS : undefined } },
+      progress: { ...a.progress, listening: { ...a.progress.listening, section: -1, audioPos: undefined, scriptLine: undefined, deadline: a.timed ? Date.now() + Math.max(0, CHECK_MS - carry * 1000) : undefined } }, // time away also ran past the recording
     }))
     await speak('That is the end of the listening test. You now have two minutes to check your answers.', { rate, volume: volumeRef.current })
   }

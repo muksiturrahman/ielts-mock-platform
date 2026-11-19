@@ -225,5 +225,8 @@ describe('round-4 scoring', () => {
     expect(normalizeAnswer('13.50')).toBe('13.5') // a price, not a time
     expect(normalizeAnswer('3.0.1')).toBe('3.0.1') // a version number keeps its zeros
     expect(normalizeAnswer('the 1st')).toBe(normalizeAnswer('1st'))
+    expect(normalizeAnswer('the 1st.')).toBe(normalizeAnswer('1st'))
+    expect(normalizeAnswer('the 5th floor')).not.toBe(normalizeAnswer('5th floor'))
+    expect(normalizeAnswer('the 2 bedrooms')).not.toBe(normalizeAnswer('2 bedrooms'))
   })
 })
